@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>To-Do</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <h2>My Tasks</h2>
+      <span id="taskCounter" class="counter">0 tasks</span>
+    </div>
+  </div>
+
+  <div class="main-container">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tasks">Tasks</button>
+      <button class="tab-btn" data-tab="notes">Notes</button>
+      <button class="tab-btn" data-tab="secret">Vault</button>
+    </div>
+
+    <div class="content-area">
+      <div id="tasksPanel" class="panel">
+        <div class="input-container">
+          <input type="text" id="taskInput" placeholder="Add a task..." />
+          <button id="addBtn">+</button>
+          <button id="aiBtn" title="AI Assistant">AI</button>
+        </div>
+
+        <div id="aiPanel" class="ai-panel hidden">
+          <div class="ai-header">
+            <span>AI Assistant</span>
+            <button id="closeAi" class="close-ai">x</button>
+          </div>
+          <div id="aiContent" class="ai-content">
+            <p>Ask AI for help with your tasks!</p>
+          </div>
+          <div class="ai-input-container">
+            <input type="text" id="aiInput" placeholder="Ask AI..." />
+            <button id="askAiBtn">Ask</button>
+          </div>
+          <div class="ai-actions">
+            <button class="ai-action" data-action="suggest">Suggest Tasks</button>
+            <button class="ai-action" data-action="prioritize">Prioritize</button>
+            <button class="ai-action" data-action="breakdown">Break Down</button>
+          </div>
+        </div>
+
+        <div class="search-container">
+          <input type="text" id="searchInput" placeholder="Search tasks..." />
+          <span class="search-icon"></span>
+        </div>
+
+        <div class="filters">
+          <button class="filter-btn active" data-filter="all">All</button>
+          <button class="filter-btn" data-filter="active">Active</button>
+          <button class="filter-btn" data-filter="completed">Done</button>
+        </div>
+
+        <ul id="taskList"></ul>
+
+        <div id="emptyState" class="empty-state">
+          <p>No tasks yet! Add one above.</p>
+        </div>
+
+        <button id="clearCompleted" class="clear-btn">Clear Completed</button>
+      </div>
+
+      <div id="notesPanel" class="panel hidden">
+        <div class="notes-container">
+          <textarea id="notesArea" placeholder="Write your notes here..."></textarea>
+          <div class="notes-footer">
+            <span id="charCount">0 characters</span>
+            <span id="saveStatus">Saved</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="secretPanel" class="panel hidden">
+        <div id="passwordScreen" class="password-screen">
+          <div class="lock-icon"></div>
+          <h3>Private Vault</h3>
+          <p>Enter password to unlock your encrypted vault</p>
+          <div class="password-input-container">
+            <input type="password" id="passwordInput" placeholder="Enter password..." />
+            <button id="unlockBtn" class="unlock-btn">Unlock</button>
+          </div>
+          <p class="password-hint">First time? Set a password to create your private vault.</p>
+        </div>
+
+        <div id="secretContent" class="secret-content hidden">
+          <div class="secret-header">
+            <div class="status-badges">
+              <span class="encrypted-badge">Encrypted</span>
+              <span class="unlocked-badge">Unlocked</span>
+            </div>
+            <div class="secret-actions">
+              <button id="changePasswordBtn" class="action-btn" title="Change Password">Change Password</button>
+              <button id="lockBtn" class="action-btn lock-btn" title="Lock">Lock</button>
+            </div>
+          </div>
+          <div class="secret-notes-container">
+            <textarea id="secretNotesArea" placeholder="Write your private notes here..."></textarea>
+            <div class="secret-footer">
+              <span id="secretCharCount">0 characters</span>
+              <span id="secretSaveStatus">Encrypted & Saved</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>
