@@ -5,6 +5,7 @@ const counter = document.getElementById("taskCounter");
 const emptyState = document.getElementById("emptyState");
 const clearBtn = document.getElementById("clearCompleted");
 const filterBtns = document.querySelectorAll(".filter-btn");
+const priorityFilterBtns = document.querySelectorAll(".priority-filter-btn");
 const searchInput = document.getElementById("searchInput");
 
 // AI Elements
@@ -26,6 +27,19 @@ const notesArea = document.getElementById("notesArea");
 const charCount = document.getElementById("charCount");
 const saveStatus = document.getElementById("saveStatus");
 
+// Bookmarks Elements
+const bookmarksPanel = document.getElementById("bookmarksPanel");
+const saveCurrentPageBtn = document.getElementById("saveCurrentPageBtn");
+const bookmarkUrlInput = document.getElementById("bookmarkUrlInput");
+const bookmarkTitleInput = document.getElementById("bookmarkTitleInput");
+const addBookmarkBtn = document.getElementById("addBookmarkBtn");
+const bookmarkSearchInput = document.getElementById("bookmarkSearchInput");
+const bookmarkList = document.getElementById("bookmarkList");
+const bookmarkCounter = document.getElementById("bookmarkCounter");
+const bookmarkEmptyState = document.getElementById("bookmarkEmptyState");
+const clearAllBookmarksBtn = document.getElementById("clearAllBookmarks");
+
+
 // Secret Notes Elements
 const secretPanel = document.getElementById("secretPanel");
 const passwordScreen = document.getElementById("passwordScreen");
@@ -40,7 +54,10 @@ const secretSaveStatus = document.getElementById("secretSaveStatus");
 
 let tasks = [];
 let notes = "";
+let bookmarks = [];
+let bookmarkSearchQuery = "";
 let currentFilter = "all";
+let currentPriorityFilter = "all";
 let searchQuery = "";
 let editingIndex = null;
 let isAiLoading = false;
@@ -49,6 +66,7 @@ let secretNoteSaveTimeout = null;
 let decryptedSecretNotes = "";
 let isSecretUnlocked = false;
 let autoLockTimeout = null;
+let currentPassword = null; // Store password for session
 const AUTO_LOCK_TIME = 5 * 60 * 1000; // 5 minutes
 
 // Use chrome.storage for sync across devices, fallback to localStorage
@@ -87,12 +105,28 @@ function renderTasks() {
     if (currentFilter === "active" && task.completed) return false;
     if (currentFilter === "completed" && !task.completed) return false;
 
+    // Apply priority filter
+    if (currentPriorityFilter !== "all") {
+      const taskPriority = task.priority || "none";
+      if (taskPriority !== currentPriorityFilter) return false;
+    }
+
     // Apply search filter
     if (searchQuery && !task.text.toLowerCase().includes(searchQuery.toLowerCase())) {
       return false;
     }
 
     return true;
+  });
+
+  // Sort by priority: high > medium > low > none
+  const priorityOrder = { high: 0, medium: 1, low: 2, none: 3 };
+  filteredTasks.sort((a, b) => {
+    const aPriority = priorityOrder[a.priority || "none"];
+    const bPriority = priorityOrder[b.priority || "none"];
+    if (aPriority !== bPriority) return aPriority - bPriority;
+    // If same priority, sort by creation time (newest first)
+    return (b.createdAt || 0) - (a.createdAt || 0);
   });
 
   filteredTasks.forEach((task, filteredIndex) => {
@@ -119,10 +153,14 @@ function renderTasks() {
         if (e.key === "Escape") cancelEdit();
       });
     } else {
+      const priority = task.priority || 'none';
       li.innerHTML = `
         <div class="checkbox ${task.completed ? 'checked' : ''}">
-          ${task.completed ? '\u2713' : ''}
+          ${task.completed ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
         </div>
+        <button class="priority-badge ${priority}" title="Priority: ${priority}">
+          <span class="priority-indicator"></span>
+        </button>
         <span class="task-text">${escapeHtml(task.text)}</span>
         <div class="task-menu">
           <button class="menu-btn" title="Options"><span class="dots"></span></button>
@@ -135,6 +173,10 @@ function renderTasks() {
 
       // Add event listeners (no inline handlers)
       li.querySelector('.checkbox').addEventListener('click', () => toggleTask(actualIndex));
+      li.querySelector('.priority-badge').addEventListener('click', (e) => {
+        e.stopPropagation();
+        cyclePriority(actualIndex);
+      });
       li.querySelector('.task-text').addEventListener('click', () => startEdit(actualIndex));
 
       const menuBtn = li.querySelector('.menu-btn');
@@ -185,7 +227,7 @@ async function addTask() {
     // Auto-correct the task text using AI
     const correctedText = await correctText(text);
 
-    tasks.unshift({ text: correctedText, completed: false, createdAt: Date.now() });
+    tasks.unshift({ text: correctedText, completed: false, createdAt: Date.now(), priority: 'none' });
     saveTasks();
 
     input.disabled = false;
@@ -257,6 +299,23 @@ function setFilter(filter) {
   renderTasks();
 }
 
+function setPriorityFilter(priority) {
+  currentPriorityFilter = priority;
+  priorityFilterBtns.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.priority === priority);
+  });
+  renderTasks();
+}
+
+function cyclePriority(index) {
+  const priorities = ['none', 'low', 'medium', 'high'];
+  const currentPriority = tasks[index].priority || 'none';
+  const currentIndex = priorities.indexOf(currentPriority);
+  const nextIndex = (currentIndex + 1) % priorities.length;
+  tasks[index].priority = priorities[nextIndex];
+  saveTasks();
+}
+
 function updateCounter() {
   const active = tasks.filter((t) => !t.completed).length;
   const total = tasks.length;
@@ -281,6 +340,10 @@ input.addEventListener("keydown", (e) => {
 
 filterBtns.forEach((btn) => {
   btn.addEventListener("click", () => setFilter(btn.dataset.filter));
+});
+
+priorityFilterBtns.forEach((btn) => {
+  btn.addEventListener("click", () => setPriorityFilter(btn.dataset.priority));
 });
 
 clearBtn.addEventListener("click", clearCompleted);
@@ -420,11 +483,245 @@ function displayAiResponse(response, showAddButtons = false) {
 function addAiTask(taskText) {
   const cleanText = taskText.replace(/\*\*/g, '').trim();
   if (cleanText) {
-    tasks.unshift({ text: cleanText, completed: false, createdAt: Date.now() });
+    tasks.unshift({ text: cleanText, completed: false, createdAt: Date.now(), priority: 'none' });
     saveTasks();
     aiContent.innerHTML = `<p>Added: "${cleanText}"</p>`;
   }
 }
+
+// ===== BOOKMARKS FUNCTIONS =====
+
+function loadBookmarks() {
+  if (storage) {
+    storage.get(["bookmarks"], (result) => {
+      bookmarks = result.bookmarks || [];
+      renderBookmarks();
+    });
+  } else {
+    bookmarks = JSON.parse(localStorage.getItem("bookmarks")) || [];
+    renderBookmarks();
+  }
+}
+
+function saveBookmarks() {
+  if (storage) {
+    storage.set({ bookmarks });
+  } else {
+    localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+  }
+  renderBookmarks();
+}
+
+function renderBookmarks() {
+  bookmarkList.innerHTML = "";
+
+  const filteredBookmarks = bookmarks.filter((bookmark) => {
+    if (bookmarkSearchQuery &&
+      !bookmark.title.toLowerCase().includes(bookmarkSearchQuery.toLowerCase()) &&
+      !bookmark.url.toLowerCase().includes(bookmarkSearchQuery.toLowerCase())) {
+      return false;
+    }
+    return true;
+  });
+
+  filteredBookmarks.forEach((bookmark, index) => {
+    const actualIndex = bookmarks.indexOf(bookmark);
+    const li = document.createElement("li");
+    li.className = "bookmark-item";
+
+    // Extract domain for display
+    let domain = "";
+    try {
+      const url = new URL(bookmark.url);
+      domain = url.hostname.replace('www.', '');
+    } catch (e) {
+      domain = bookmark.url;
+    }
+
+    li.innerHTML = `
+      <div class="bookmark-content">
+        <div class="bookmark-favicon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </div>
+        <div class="bookmark-info">
+          <div class="bookmark-title">${escapeHtml(bookmark.title)}</div>
+          <div class="bookmark-url">${escapeHtml(domain)}</div>
+        </div>
+        <div class="bookmark-actions">
+          <button class="bookmark-open-btn" title="Open in new tab">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </button>
+          <button class="bookmark-delete-btn" title="Delete">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Add event listeners
+    li.querySelector('.bookmark-content').addEventListener('click', (e) => {
+      if (!e.target.closest('.bookmark-actions')) {
+        openBookmark(bookmark.url);
+      }
+    });
+
+    li.querySelector('.bookmark-open-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      openBookmark(bookmark.url);
+    });
+
+    li.querySelector('.bookmark-delete-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteBookmark(actualIndex);
+    });
+
+    bookmarkList.appendChild(li);
+  });
+
+  updateBookmarkCounter();
+  updateBookmarkEmptyState(filteredBookmarks.length);
+  updateClearAllButton();
+}
+
+async function saveCurrentPage() {
+  try {
+    // Get current active tab
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+    if (tab && tab.url) {
+      // Don't save chrome:// or extension pages
+      if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
+        alert('Cannot save Chrome internal pages');
+        return;
+      }
+
+      const title = tab.title || 'Untitled Page';
+      const url = tab.url;
+
+      // Check if already bookmarked
+      const exists = bookmarks.some(b => b.url === url);
+      if (exists) {
+        alert('This page is already bookmarked!');
+        return;
+      }
+
+      bookmarks.unshift({
+        title: title,
+        url: url,
+        createdAt: Date.now()
+      });
+
+      saveBookmarks();
+
+      // Visual feedback
+      saveCurrentPageBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Saved!';
+      saveCurrentPageBtn.style.background = '#4caf50';
+      setTimeout(() => {
+        saveCurrentPageBtn.innerHTML = '<span class="bookmark-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></span> Save Current Page';
+        saveCurrentPageBtn.style.background = '';
+      }, 2000);
+    }
+  } catch (error) {
+    console.error('Error saving current page:', error);
+    alert('Could not save current page. Make sure you have an active tab open.');
+  }
+}
+
+function addBookmarkManually() {
+  const url = bookmarkUrlInput.value.trim();
+  const title = bookmarkTitleInput.value.trim();
+
+  if (!url) {
+    alert('Please enter a URL');
+    return;
+  }
+
+  // Add https:// if no protocol
+  let fullUrl = url;
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    fullUrl = 'https://' + url;
+  }
+
+  // Validate URL
+  try {
+    new URL(fullUrl);
+  } catch (e) {
+    alert('Please enter a valid URL');
+    return;
+  }
+
+  // Check if already exists
+  const exists = bookmarks.some(b => b.url === fullUrl);
+  if (exists) {
+    alert('This URL is already bookmarked!');
+    return;
+  }
+
+  // Extract title from URL if not provided
+  let finalTitle = title;
+  if (!finalTitle) {
+    try {
+      const urlObj = new URL(fullUrl);
+      finalTitle = urlObj.hostname.replace('www.', '');
+    } catch (e) {
+      finalTitle = fullUrl;
+    }
+  }
+
+  bookmarks.unshift({
+    title: finalTitle,
+    url: fullUrl,
+    createdAt: Date.now()
+  });
+
+  saveBookmarks();
+  bookmarkUrlInput.value = '';
+  bookmarkTitleInput.value = '';
+}
+
+function openBookmark(url) {
+  chrome.tabs.create({ url: url });
+}
+
+function deleteBookmark(index) {
+  bookmarks.splice(index, 1);
+  saveBookmarks();
+}
+
+function clearAllBookmarks() {
+  if (confirm('Are you sure you want to delete all bookmarks? This cannot be undone.')) {
+    bookmarks = [];
+    saveBookmarks();
+  }
+}
+
+function updateBookmarkCounter() {
+  bookmarkCounter.textContent = `${bookmarks.length} bookmark${bookmarks.length !== 1 ? 's' : ''}`;
+}
+
+function updateBookmarkEmptyState(count) {
+  bookmarkEmptyState.classList.toggle("hidden", count > 0);
+}
+
+function updateClearAllButton() {
+  clearAllBookmarksBtn.classList.toggle("hidden", bookmarks.length === 0);
+}
+
+// Bookmarks Event Listeners
+saveCurrentPageBtn.addEventListener('click', saveCurrentPage);
+addBookmarkBtn.addEventListener('click', addBookmarkManually);
+bookmarkUrlInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') addBookmarkManually();
+});
+bookmarkTitleInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') addBookmarkManually();
+});
+bookmarkSearchInput.addEventListener('input', (e) => {
+  bookmarkSearchQuery = e.target.value.trim();
+  renderBookmarks();
+});
+clearAllBookmarksBtn.addEventListener('click', clearAllBookmarks);
+
 
 // Notes Functions
 function loadNotes() {
@@ -580,14 +877,21 @@ async function unlockSecretNotes() {
   unlockBtn.disabled = true;
   unlockBtn.textContent = 'Unlocking...';
 
-  // Load encrypted data
-  if (storage) {
-    storage.get(['secretNotes'], async (result) => {
-      await processUnlock(result.secretNotes, password);
-    });
-  } else {
-    const encryptedData = localStorage.getItem('secretNotes');
-    await processUnlock(encryptedData ? JSON.parse(encryptedData) : null, password);
+  try {
+    // Load encrypted data
+    if (storage) {
+      storage.get(['secretNotes'], async (result) => {
+        await processUnlock(result.secretNotes, password);
+      });
+    } else {
+      const encryptedData = localStorage.getItem('secretNotes');
+      await processUnlock(encryptedData ? JSON.parse(encryptedData) : null, password);
+    }
+  } catch (error) {
+    console.error('Unlock error:', error);
+    alert('Failed to unlock vault');
+    unlockBtn.disabled = false;
+    unlockBtn.textContent = 'Unlock';
   }
 }
 
@@ -596,8 +900,9 @@ async function processUnlock(encryptedData, password) {
     // First time - create new encrypted vault
     decryptedSecretNotes = '';
     isSecretUnlocked = true;
+    currentPassword = password; // Store password for session
     showSecretContent();
-    await saveSecretNotes(password);
+    // Don't save empty vault immediately, wait for user to type
     passwordInput.value = '';
   } else {
     // Decrypt existing data
@@ -612,6 +917,7 @@ async function processUnlock(encryptedData, password) {
 
     decryptedSecretNotes = decrypted;
     isSecretUnlocked = true;
+    currentPassword = password; // Store password for session
     secretNotesArea.value = decryptedSecretNotes;
     updateSecretCharCount();
     showSecretContent();
@@ -634,6 +940,7 @@ function showSecretContent() {
 function lockSecretNotes() {
   isSecretUnlocked = false;
   decryptedSecretNotes = '';
+  currentPassword = null; // Clear password from memory
   secretNotesArea.value = '';
   passwordScreen.classList.remove('hidden');
   secretContent.classList.add('hidden');
@@ -648,43 +955,61 @@ async function saveSecretNotes(password = null) {
   secretSaveStatus.textContent = 'Encrypting...';
   secretSaveStatus.classList.add('saving');
 
-  // If no password provided, we need to prompt for it
+  // Use stored password if available
   if (!password) {
-    password = prompt('Enter your password to save:');
-    if (!password) {
-      secretSaveStatus.textContent = 'Save cancelled';
-      secretSaveStatus.classList.remove('saving');
-      return;
-    }
+    password = currentPassword;
   }
 
-  const encrypted = await encryptText(textToSave, password);
-
-  if (!encrypted) {
-    alert('Failed to encrypt notes');
-    secretSaveStatus.textContent = 'Save failed';
+  if (!password) {
+    secretSaveStatus.textContent = 'Error: No password';
     secretSaveStatus.classList.remove('saving');
     return;
   }
 
-  if (storage) {
-    storage.set({ secretNotes: encrypted }, () => {
+  try {
+    const encrypted = await encryptText(textToSave, password);
+
+    if (!encrypted) {
+      alert('Failed to encrypt notes');
+      secretSaveStatus.textContent = 'Save failed';
+      secretSaveStatus.classList.remove('saving');
+      return;
+    }
+
+    if (storage) {
+      storage.set({ secretNotes: encrypted }, () => {
+        secretSaveStatus.textContent = 'Encrypted & Saved';
+        secretSaveStatus.classList.remove('saving');
+      });
+    } else {
+      localStorage.setItem('secretNotes', JSON.stringify(encrypted));
       secretSaveStatus.textContent = 'Encrypted & Saved';
       secretSaveStatus.classList.remove('saving');
-    });
-  } else {
-    localStorage.setItem('secretNotes', JSON.stringify(encrypted));
-    secretSaveStatus.textContent = 'Encrypted & Saved';
+    }
+
+    decryptedSecretNotes = textToSave;
+    resetAutoLock();
+  } catch (error) {
+    console.error('Save error:', error);
+    secretSaveStatus.textContent = 'Save failed';
     secretSaveStatus.classList.remove('saving');
   }
-
-  decryptedSecretNotes = textToSave;
-  resetAutoLock();
 }
 
 async function changePassword() {
+  if (!isSecretUnlocked) {
+    alert('Please unlock the vault first');
+    return;
+  }
+
   const oldPassword = prompt('Enter current password:');
   if (!oldPassword) return;
+
+  // Verify old password matches current session password
+  if (oldPassword !== currentPassword) {
+    alert('Incorrect current password');
+    return;
+  }
 
   const newPassword = prompt('Enter new password (min 6 characters):');
   if (!newPassword || newPassword.length < 6) {
@@ -698,31 +1023,15 @@ async function changePassword() {
     return;
   }
 
-  // Verify old password by trying to decrypt
-  if (storage) {
-    storage.get(['secretNotes'], async (result) => {
-      if (result.secretNotes) {
-        const decrypted = await decryptText(result.secretNotes, oldPassword);
-        if (decrypted === null) {
-          alert('Incorrect current password');
-          return;
-        }
-        // Re-encrypt with new password
-        await saveSecretNotes(newPassword);
-        alert('Password changed successfully!');
-      }
-    });
-  } else {
-    const encryptedData = localStorage.getItem('secretNotes');
-    if (encryptedData) {
-      const decrypted = await decryptText(JSON.parse(encryptedData), oldPassword);
-      if (decrypted === null) {
-        alert('Incorrect current password');
-        return;
-      }
-      await saveSecretNotes(newPassword);
-      alert('Password changed successfully!');
-    }
+  try {
+    // Update password and save current content with new password
+    currentPassword = newPassword;
+    await saveSecretNotes(newPassword);
+    alert('Password changed successfully!');
+  } catch (error) {
+    console.error('Change password error:', error);
+    alert('Failed to change password');
+    currentPassword = oldPassword; // Revert on error
   }
 }
 
@@ -761,18 +1070,13 @@ secretNotesArea.addEventListener('input', () => {
   secretSaveStatus.classList.add('saving');
   resetAutoLock();
 
-  // Debounce save
+  // Debounce save - use stored password, no prompts
   clearTimeout(secretNoteSaveTimeout);
   secretNoteSaveTimeout = setTimeout(() => {
-    const password = prompt('Enter password to save changes:');
-    if (password) {
-      saveSecretNotes(password);
-    } else {
-      secretSaveStatus.textContent = 'Not saved';
-      secretSaveStatus.classList.remove('saving');
-    }
-  }, 2000);
+    saveSecretNotes(); // Will use currentPassword automatically
+  }, 1500);
 });
+
 
 // Update tab switching to include secret panel
 tabBtns.forEach(btn => {
@@ -785,14 +1089,22 @@ tabBtns.forEach(btn => {
     if (tab === 'tasks') {
       tasksPanel.classList.remove('hidden');
       notesPanel.classList.add('hidden');
+      bookmarksPanel.classList.add('hidden');
       secretPanel.classList.add('hidden');
     } else if (tab === 'notes') {
       tasksPanel.classList.add('hidden');
       notesPanel.classList.remove('hidden');
+      bookmarksPanel.classList.add('hidden');
+      secretPanel.classList.add('hidden');
+    } else if (tab === 'bookmarks') {
+      tasksPanel.classList.add('hidden');
+      notesPanel.classList.add('hidden');
+      bookmarksPanel.classList.remove('hidden');
       secretPanel.classList.add('hidden');
     } else if (tab === 'secret') {
       tasksPanel.classList.add('hidden');
       notesPanel.classList.add('hidden');
+      bookmarksPanel.classList.add('hidden');
       secretPanel.classList.remove('hidden');
     }
   });
@@ -800,3 +1112,4 @@ tabBtns.forEach(btn => {
 
 // Initialize
 loadTasks();
+loadBookmarks();
