@@ -1,5 +1,5 @@
 // Background Service Worker for API calls
-const GITHUB_TOKEN = 'github_api_XXXXXXXXXXXXXXXXXXXXXX';
+const GITHUB_TOKEN = 'your-api-key-here';
 const API_URL = 'https://models.inference.ai.azure.com/chat/completions';
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
