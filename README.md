@@ -1,4 +1,4 @@
-# 📝 Student To-Do List - Chrome Extension
+# Student To-Do List - Chrome Extension
 
 > A beautiful, feature-rich task management extension designed specifically for students with AI assistance, encrypted notes, and a modern dark interface.
 
@@ -6,64 +6,64 @@
 ![Manifest](https://img.shields.io/badge/manifest-v3-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 
-## ✨ Features
+## Features
 
-### 🎯 **Task Management**
-- ✅ Create, edit, and delete tasks with ease
-- 🔄 Auto-correct task text using AI
-- ✔️ Mark tasks as complete/incomplete
-- 🎨 **Priority Levels** - Color-coded badges (High/Medium/Low)
-- 🔄 **One-Click Priority Cycling** - Click badge to cycle priorities
-- 🎯 **Priority Filtering** - Filter tasks by priority level
-- 📊 **Auto-Sort by Priority** - High priority tasks always on top
-- 🔍 Search and filter tasks (All, Active, Completed)
-- 📊 Real-time task counter (active/total)
-- 🧹 Bulk clear completed tasks
-- 💾 Automatic cloud sync across devices
+### Task Management
+- Create, edit, and delete tasks with ease
+- Auto-correct task text using AI
+- Mark tasks as complete/incomplete
+- **Priority Levels** - Color-coded badges (High/Medium/Low)
+- **One-Click Priority Cycling** - Click badge to cycle priorities
+- **Priority Filtering** - Filter tasks by priority level
+- **Auto-Sort by Priority** - High priority tasks always on top
+- Search and filter tasks (All, Active, Completed)
+- Real-time task counter (active/total)
+- Bulk clear completed tasks
+- Automatic cloud sync across devices
 
-### 🤖 **AI Assistant**
-- 💡 Get intelligent task suggestions
-- 📋 Prioritize tasks automatically
-- 🔨 Break down complex tasks into steps
-- 💬 Ask questions about your tasks
-- ⚡ Powered by Azure AI models
-
-
-### 📓 **Notes**
-- 📝 Quick notes with auto-save
-- 📊 Character counter
-- 🔄 Real-time save status
-- ☁️ Cloud synchronization
-
-### 🔖 **Bookmarks** (Saved Links)
-- 🔖 Save current page with one click
-- 📋 Auto-capture page title and URL
-- ✍️ Manual URL entry with optional custom titles
-- 🔍 Search bookmarks by title or URL
-- 🔗 Click to open in new tab
-- 🗑️ Individual or bulk delete
-- 💾 Cloud sync across devices
-- 📊 Bookmark counter
+### AI Assistant
+- Get intelligent task suggestions
+- Prioritize tasks automatically
+- Break down complex tasks into steps
+- Ask questions about your tasks
+- Powered by Azure AI models
 
 
-### 🔐 **Private Vault** (Encrypted Notes)
-- 🔒 AES-256-GCM encryption
-- 🔑 Password-protected access
-- 🛡️ PBKDF2 key derivation (100,000 iterations)
-- ⏰ Auto-lock after 5 minutes of inactivity
-- 🔄 Change password anytime
-- 🔐 Encrypted & Unlocked status badges
-- 💾 Encrypted cloud storage
+### Notes
+- Quick notes with auto-save
+- Character counter
+- Real-time save status
+- Cloud synchronization
 
-### 🎨 **Modern UI/UX**
-- 🌑 Beautiful dark theme
-- 🎯 Clean, minimalist design
-- ⚡ Smooth animations and transitions
-- 📱 Responsive layout (400px width)
-- 🎨 Red accent color (#E3311D)
-- ✨ Premium glassmorphism effects
+### Bookmarks (Saved Links)
+- Save current page with one click
+- Auto-capture page title and URL
+- Manual URL entry with optional custom titles
+- Search bookmarks by title or URL
+- Click to open in new tab
+- Individual or bulk delete
+- Cloud sync across devices
+- Bookmark counter
 
-## 🚀 Installation
+
+### Private Vault (Encrypted Notes)
+- AES-256-GCM encryption
+- Password-protected access
+- PBKDF2 key derivation (100,000 iterations)
+- Auto-lock after 5 minutes of inactivity
+- Change password anytime
+- Encrypted & Unlocked status badges
+- Encrypted cloud storage
+
+### Modern UI/UX
+- Beautiful dark theme
+- Clean, minimalist design
+- Smooth animations and transitions
+- Responsive layout (400px width)
+- Red accent color (#E3311D)
+- Premium glassmorphism effects
+
+## Installation
 
 ### From Source
 
