@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Student To-Do List",
-  "version": "2.2",
+  "version": "2.4",
   "description": "A beautiful and productive to-do list for students",
   "action": {
     "default_popup": "popup.html",
     "default_title": "My Tasks"
   },
   "permissions": [
-    "storage"
+    "storage",
+    "tabs"
   ],
   "host_permissions": [
     "https://models.inference.ai.azure.com/*"

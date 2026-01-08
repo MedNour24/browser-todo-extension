@@ -479,6 +479,157 @@ input:focus {
   color: var(--light);
 }
 
+/* Priority Filters */
+.priority-filters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 15px;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--dark);
+  border-radius: 10px;
+  border: 1px solid var(--gray);
+}
+
+.priority-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #888;
+  margin-right: 5px;
+}
+
+.priority-filter-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: transparent;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.priority-filter-btn:hover {
+  transform: scale(1.15);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.priority-filter-btn.active {
+  border-color: var(--primary);
+  transform: scale(1.2);
+  box-shadow: 0 0 0 3px rgba(227, 49, 29, 0.2);
+}
+
+.priority-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.priority-dot.all {
+  background: linear-gradient(135deg, #ff4444 0%, #ffaa00 33%, #4488ff 66%, #666 100%);
+}
+
+.priority-dot.high {
+  background: #ff4444;
+  box-shadow: 0 0 8px rgba(255, 68, 68, 0.5);
+}
+
+.priority-dot.medium {
+  background: #ffaa00;
+  box-shadow: 0 0 8px rgba(255, 170, 0, 0.5);
+}
+
+.priority-dot.low {
+  background: #4488ff;
+  box-shadow: 0 0 8px rgba(68, 136, 255, 0.5);
+}
+
+.priority-dot.none {
+  background: #666;
+  border: 2px solid #888;
+}
+
+.priority-filter-btn:hover .priority-dot {
+  transform: scale(1.1);
+}
+
+/* Priority Badge on Tasks */
+.priority-badge {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  position: relative;
+  padding: 0;
+  background: transparent;
+}
+
+.priority-badge:hover {
+  transform: scale(1.2) rotate(180deg);
+}
+
+.priority-badge:active {
+  transform: scale(0.9);
+}
+
+.priority-indicator {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.priority-badge.high .priority-indicator {
+  background: #ff4444;
+  box-shadow: 0 0 10px rgba(255, 68, 68, 0.6), 0 2px 4px rgba(0, 0, 0, 0.3);
+  animation: pulse-high 2s infinite;
+}
+
+.priority-badge.medium .priority-indicator {
+  background: #ffaa00;
+  box-shadow: 0 0 10px rgba(255, 170, 0, 0.6), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.priority-badge.low .priority-indicator {
+  background: #4488ff;
+  box-shadow: 0 0 8px rgba(68, 136, 255, 0.5), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.priority-badge.none .priority-indicator {
+  background: #444;
+  border: 2px solid #666;
+  box-shadow: none;
+}
+
+@keyframes pulse-high {
+
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(255, 68, 68, 0.6), 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 20px rgba(255, 68, 68, 0.9), 0 2px 8px rgba(255, 68, 68, 0.5);
+  }
+}
+
+
 /* Task List */
 ul {
   list-style: none;
@@ -785,6 +936,264 @@ li.completed .task-text {
 #saveStatus.saving {
   color: #ff9800;
 }
+
+/* Bookmarks */
+.bookmarks-header {
+  margin-bottom: 15px;
+}
+
+.save-current-btn {
+  width: 100%;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, var(--primary), #ff4433);
+  color: var(--light);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(227, 49, 29, 0.3);
+}
+
+.save-current-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(227, 49, 29, 0.4);
+}
+
+.save-current-btn:active {
+  transform: translateY(0);
+}
+
+.bookmark-icon {
+  font-size: 16px;
+}
+
+.bookmark-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+}
+
+.bookmark-input-container input {
+  flex: 1;
+  padding: 12px 15px;
+  border: 2px solid var(--gray);
+  border-radius: 10px;
+  font-size: 13px;
+  outline: none;
+  background: var(--dark);
+  color: var(--light);
+  transition: all 0.3s ease;
+}
+
+.bookmark-input-container input::placeholder {
+  color: #666;
+  font-size: 12px;
+}
+
+.bookmark-input-container input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(227, 49, 29, 0.2);
+}
+
+#addBookmarkBtn {
+  width: 100%;
+  padding: 12px;
+  background: var(--primary);
+  color: var(--light);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+#addBookmarkBtn:hover {
+  background: #ff4433;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(227, 49, 29, 0.4);
+}
+
+#addBookmarkBtn:active {
+  transform: translateY(0);
+}
+
+.bookmark-search-container {
+  position: relative;
+  margin-bottom: 15px;
+}
+
+.bookmark-search-container input {
+  width: 100%;
+  padding: 12px 40px 12px 15px;
+  border: 2px solid var(--gray);
+  border-radius: 10px;
+  font-size: 14px;
+  outline: none;
+  background: var(--dark);
+  color: var(--light);
+  transition: all 0.3s ease;
+}
+
+.bookmark-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 0 5px;
+}
+
+#bookmarkCounter {
+  background: var(--primary);
+  color: var(--light);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+#bookmarkList {
+  list-style: none;
+  max-height: 250px;
+  overflow-y: auto;
+  margin-bottom: 5px;
+}
+
+.bookmark-item {
+  background: var(--dark);
+  margin-bottom: 8px;
+  padding: 0;
+  border-radius: 10px;
+  animation: slideIn 0.3s ease;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.bookmark-item:hover {
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(227, 49, 29, 0.2);
+}
+
+.bookmark-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bookmark-content:hover {
+  background: rgba(227, 49, 29, 0.05);
+}
+
+.bookmark-favicon {
+  width: 36px;
+  height: 36px;
+  background: var(--gray);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.bookmark-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bookmark-title {
+  color: var(--light);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-url {
+  color: #888;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bookmark-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.bookmark-open-btn,
+.bookmark-delete-btn {
+  width: 32px;
+  height: 32px;
+  background: var(--gray);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  color: #888;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bookmark-open-btn:hover {
+  background: var(--primary);
+  color: var(--light);
+  transform: scale(1.1);
+}
+
+.bookmark-delete-btn:hover {
+  background: #ff4444;
+  color: var(--light);
+  transform: scale(1.1);
+}
+
+#clearAllBookmarks {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  background: transparent;
+  color: #666;
+  border: 1px dashed #444;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+}
+
+#clearAllBookmarks:hover {
+  border-color: #ff4444;
+  color: #ff4444;
+}
+
+#clearAllBookmarks.hidden {
+  display: none;
+}
+
 
 /* Secret Notes */
 .password-screen {

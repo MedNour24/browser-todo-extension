@@ -19,6 +19,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="tasks">Tasks</button>
       <button class="tab-btn" data-tab="notes">Notes</button>
+      <button class="tab-btn" data-tab="bookmarks">Links</button>
       <button class="tab-btn" data-tab="secret">Vault</button>
     </div>
 
@@ -60,6 +61,25 @@
           <button class="filter-btn" data-filter="completed">Done</button>
         </div>
 
+        <div class="priority-filters">
+          <span class="priority-label">Priority:</span>
+          <button class="priority-filter-btn active" data-priority="all" title="All Priorities">
+            <span class="priority-dot all"></span>
+          </button>
+          <button class="priority-filter-btn" data-priority="high" title="High Priority">
+            <span class="priority-dot high"></span>
+          </button>
+          <button class="priority-filter-btn" data-priority="medium" title="Medium Priority">
+            <span class="priority-dot medium"></span>
+          </button>
+          <button class="priority-filter-btn" data-priority="low" title="Low Priority">
+            <span class="priority-dot low"></span>
+          </button>
+          <button class="priority-filter-btn" data-priority="none" title="No Priority">
+            <span class="priority-dot none"></span>
+          </button>
+        </div>
+
         <ul id="taskList"></ul>
 
         <div id="emptyState" class="empty-state">
@@ -67,6 +87,42 @@
         </div>
 
         <button id="clearCompleted" class="clear-btn">Clear Completed</button>
+      </div>
+
+      <div id="bookmarksPanel" class="panel hidden">
+        <div class="bookmarks-header">
+          <button id="saveCurrentPageBtn" class="save-current-btn" title="Save Current Page">
+            <span class="bookmark-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+              </svg>
+            </span> Save Current Page
+          </button>
+        </div>
+
+        <div class="bookmark-input-container">
+          <input type="text" id="bookmarkUrlInput" placeholder="Or paste URL manually..." />
+          <input type="text" id="bookmarkTitleInput" placeholder="Title (optional)" />
+          <button id="addBookmarkBtn">+</button>
+        </div>
+
+        <div class="bookmark-search-container">
+          <input type="text" id="bookmarkSearchInput" placeholder="Search bookmarks..." />
+          <span class="search-icon"></span>
+        </div>
+
+        <div class="bookmark-stats">
+          <span id="bookmarkCounter">0 bookmarks</span>
+        </div>
+
+        <ul id="bookmarkList"></ul>
+
+        <div id="bookmarkEmptyState" class="empty-state">
+          <p>No saved links yet! Save the current page or add a URL above.</p>
+        </div>
+
+        <button id="clearAllBookmarks" class="clear-btn hidden">Clear All Bookmarks</button>
       </div>
 
       <div id="notesPanel" class="panel hidden">
@@ -78,6 +134,7 @@
           </div>
         </div>
       </div>
+
 
       <div id="secretPanel" class="panel hidden">
         <div id="passwordScreen" class="password-screen">
