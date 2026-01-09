@@ -81,7 +81,12 @@ function loadTasks() {
       loadNotes();
     });
   } else {
-    tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+    try {
+      tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+    } catch (e) {
+      console.error('Failed to parse tasks from localStorage:', e);
+      tasks = [];
+    }
     notes = localStorage.getItem("notes") || "";
     renderTasks();
     loadNotes();
@@ -476,7 +481,13 @@ function displayAiResponse(response, showAddButtons = false) {
       aiContent.innerHTML = '<p>No suggestions available.</p>';
     }
   } else {
-    aiContent.innerHTML = lines.map(line => `<p>${line}</p>`).join('');
+    // Safely add each line to prevent XSS
+    aiContent.innerHTML = '';
+    lines.forEach(line => {
+      const p = document.createElement('p');
+      p.textContent = line;
+      aiContent.appendChild(p);
+    });
   }
 }
 
@@ -485,7 +496,11 @@ function addAiTask(taskText) {
   if (cleanText) {
     tasks.unshift({ text: cleanText, completed: false, createdAt: Date.now(), priority: 'none' });
     saveTasks();
-    aiContent.innerHTML = `<p>Added: "${cleanText}"</p>`;
+    // Safely display the added task to prevent XSS
+    const p = document.createElement('p');
+    p.textContent = `Added: "${cleanText}"`;
+    aiContent.innerHTML = '';
+    aiContent.appendChild(p);
   }
 }
 
@@ -498,7 +513,12 @@ function loadBookmarks() {
       renderBookmarks();
     });
   } else {
-    bookmarks = JSON.parse(localStorage.getItem("bookmarks")) || [];
+    try {
+      bookmarks = JSON.parse(localStorage.getItem("bookmarks")) || [];
+    } catch (e) {
+      console.error('Failed to parse bookmarks from localStorage:', e);
+      bookmarks = [];
+    }
     renderBookmarks();
   }
 }
@@ -585,6 +605,12 @@ function renderBookmarks() {
 
 async function saveCurrentPage() {
   try {
+    // Check if chrome.tabs is available
+    if (typeof chrome === 'undefined' || !chrome.tabs) {
+      alert('This feature is only available in the browser extension.');
+      return;
+    }
+    
     // Get current active tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
@@ -680,7 +706,12 @@ function addBookmarkManually() {
 }
 
 function openBookmark(url) {
-  chrome.tabs.create({ url: url });
+  if (typeof chrome !== 'undefined' && chrome.tabs) {
+    chrome.tabs.create({ url: url });
+  } else {
+    // Fallback for non-extension context
+    window.open(url, '_blank');
+  }
 }
 
 function deleteBookmark(index) {
@@ -884,8 +915,17 @@ async function unlockSecretNotes() {
         await processUnlock(result.secretNotes, password);
       });
     } else {
-      const encryptedData = localStorage.getItem('secretNotes');
-      await processUnlock(encryptedData ? JSON.parse(encryptedData) : null, password);
+      const encryptedDataStr = localStorage.getItem('secretNotes');
+      let encryptedData = null;
+      if (encryptedDataStr) {
+        try {
+          encryptedData = JSON.parse(encryptedDataStr);
+        } catch (parseError) {
+          console.error('Failed to parse encrypted data:', parseError);
+          alert('Vault data is corrupted. Starting with empty vault.');
+        }
+      }
+      await processUnlock(encryptedData, password);
     }
   } catch (error) {
     console.error('Unlock error:', error);
