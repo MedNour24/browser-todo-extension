@@ -902,7 +902,8 @@ async function processUnlock(encryptedData, password) {
     isSecretUnlocked = true;
     currentPassword = password; // Store password for session
     showSecretContent();
-    // Don't save empty vault immediately, wait for user to type
+    // Save empty vault to establish the password
+    await saveSecretNotes(password);
     passwordInput.value = '';
   } else {
     // Decrypt existing data
@@ -938,6 +939,10 @@ function showSecretContent() {
 }
 
 function lockSecretNotes() {
+  // Clear any pending save to prevent race condition
+  clearTimeout(secretNoteSaveTimeout);
+  clearTimeout(autoLockTimeout);
+  
   isSecretUnlocked = false;
   decryptedSecretNotes = '';
   currentPassword = null; // Clear password from memory
@@ -945,13 +950,19 @@ function lockSecretNotes() {
   passwordScreen.classList.remove('hidden');
   secretContent.classList.add('hidden');
   passwordInput.value = '';
-  clearTimeout(autoLockTimeout);
 }
 
 async function saveSecretNotes(password = null) {
-  if (!isSecretUnlocked) return;
+  if (!isSecretUnlocked) {
+    console.log('Save aborted: vault is locked');
+    return;
+  }
 
   const textToSave = secretNotesArea.value;
+  
+  // Double-check vault is still unlocked before UI update
+  if (!isSecretUnlocked) return;
+  
   secretSaveStatus.textContent = 'Encrypting...';
   secretSaveStatus.classList.add('saving');
 
@@ -1040,7 +1051,10 @@ function setupAutoLock() {
   autoLockTimeout = setTimeout(() => {
     if (isSecretUnlocked) {
       lockSecretNotes();
-      alert('Secret notes locked due to inactivity');
+      // Only show alert if user is on the vault tab
+      if (!secretPanel.classList.contains('hidden')) {
+        alert('Secret notes locked due to inactivity');
+      }
     }
   }, AUTO_LOCK_TIME);
 }
