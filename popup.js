@@ -1276,7 +1276,7 @@ function showTasksForDate(date) {
   if (tasksForDay.length === 0) {
     const li = document.createElement("li");
     li.style.background = "transparent";
-    li.style.color = "#666";
+    li.style.color = "#aaa";
     li.style.textAlign = "center";
     li.textContent = "No tasks for this day";
     dayTaskList.appendChild(li);

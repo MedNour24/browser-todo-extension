@@ -1477,6 +1477,7 @@ li.completed .task-text {
 #secretSaveStatus.saving {
   color: #ff9800;
 }
+
 /* Calendar Styles */
 .calendar-header {
   display: flex !important;
@@ -1620,6 +1621,6 @@ li.completed .task-text {
   font-size: 12px !important;
   border-radius: 8px !important;
   background: var(--gray) !important;
+  color: var(--light) !important;
   margin-bottom: 5px !important;
 }
-
