@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Student To-Do List",
-  "version": "2.4",
-  "description": "A beautiful and productive to-do list for students",
+  "name": "Luna",
+  "version": "3.0",
+  "description": "A beautiful and productive task manager with AI, encryption, and more.",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "My Tasks"
+    "default_title": "Luna"
   },
   "permissions": [
     "storage",

@@ -1,8 +1,8 @@
-# Student To-Do List - Chrome Extension
+# Luna - Chrome Extension
 
-> A beautiful, feature-rich task management extension designed specifically for students with AI assistance, encrypted notes, and a modern dark interface.
+> A beautiful, feature-rich task management extension with AI assistance, encrypted notes, and a modern dark interface.
 
-![Version](https://img.shields.io/badge/version-2.4-blue.svg)
+![Version](https://img.shields.io/badge/version-3.0-blue.svg)
 ![Manifest](https://img.shields.io/badge/manifest-v3-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 
@@ -200,7 +200,7 @@
 
 ### File Structure
 ```
-browser-todo-extension/
+luna-extension/
 ├── manifest.json         # Extension configuration (Manifest V3)
 ├── popup.html            # Main UI structure
 ├── popup.css             # Styling and dark theme
@@ -285,7 +285,12 @@ body {
 
 ## 📝 Changelog
 
-### Version 2.4 (Current)
+### Version 3.0 (Current)
+- 🚀 Rebranded as **Luna**
+- 🎨 UI polish and consistency updates
+- 🏷️ Updated all branding to Luna
+
+### Version 2.4
 - 🔖 Added Bookmarks/Saved Links feature
 - 📋 One-click save current page with auto-capture
 - ✍️ Manual URL entry with optional titles
@@ -344,7 +349,7 @@ This project is licensed under the MIT License - see below for details:
 ```
 MIT License
 
-Copyright (c) 2026 Student To-Do Extension
+Copyright (c) 2026 Luna
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -370,7 +375,7 @@ SOFTWARE.
 - Icons and design inspired by modern productivity apps
 - Encryption implementation based on Web Crypto API standards
 - AI features powered by Azure AI Models
-- Built with ❤️ for students everywhere
+- Built with ❤️ for productive users everywhere
 
 ## 📧 Contact
 
@@ -382,7 +387,7 @@ For questions, suggestions, or issues:
 
 <div align="center">
 
-**Made with ❤️ for productive students**
+**Made with ❤️ for productivity**
 
 ⭐ Star this repo if you find it helpful!
 
