@@ -5,7 +5,8 @@
   "description": "A beautiful and productive task manager with AI, encryption, and more.",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Luna"
+    "default_title": "Luna",
+    "default_icon": "icon.png"
   },
   "permissions": [
     "storage",

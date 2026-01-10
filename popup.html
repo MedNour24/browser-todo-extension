@@ -176,6 +176,17 @@
               <button id="lockBtn" class="action-btn lock-btn" title="Lock">Lock</button>
             </div>
           </div>
+
+          <div id="changePasswordForm" class="change-password-form hidden">
+            <h4>Change Password</h4>
+            <input type="password" id="oldPasswordInput" placeholder="Current password" />
+            <input type="password" id="newPasswordInput" placeholder="New password (min 6 chars)" />
+            <input type="password" id="confirmPasswordInput" placeholder="Confirm new password" />
+            <div class="form-actions">
+              <button id="saveNewPasswordBtn" class="save-btn">Update</button>
+              <button id="cancelPasswordChangeBtn" class="cancel-btn">Cancel</button>
+            </div>
+          </div>
           <div class="secret-notes-container">
             <textarea id="secretNotesArea" placeholder="Write your private notes here..."></textarea>
             <div class="secret-footer">

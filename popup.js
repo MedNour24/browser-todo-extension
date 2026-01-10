@@ -8,6 +8,54 @@ const filterBtns = document.querySelectorAll(".filter-btn");
 const priorityFilterBtns = document.querySelectorAll(".priority-filter-btn");
 const searchInput = document.getElementById("searchInput");
 
+// Custom Notification Function (Non-HTML5)
+function showNotification(message, isError = true) {
+  // Remove existing notification if present
+  const existing = document.querySelector(".custom-notification");
+  if (existing) {
+    document.body.removeChild(existing);
+  }
+
+  const notification = document.createElement("div");
+  notification.className = "custom-notification";
+  notification.textContent = message;
+  notification.style.position = "fixed";
+  notification.style.bottom = "20px";
+  notification.style.left = "50%";
+  notification.style.transform = "translateX(-50%)";
+  notification.style.backgroundColor = isError ? "#E3311D" : "#4caf50";
+  notification.style.color = "#ffffff";
+  notification.style.padding = "10px 20px";
+  notification.style.borderRadius = "8px";
+  notification.style.fontSize = "12px";
+  notification.style.fontWeight = "600";
+  notification.style.zIndex = "10000";
+  notification.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.3)";
+  notification.style.transition = "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)";
+  notification.style.opacity = "0";
+  notification.style.textAlign = "center";
+  notification.style.minWidth = "200px";
+
+  document.body.appendChild(notification);
+
+  // Trigger reflow for animation
+  notification.offsetHeight;
+  notification.style.opacity = "1";
+  notification.style.bottom = "30px";
+
+  setTimeout(() => {
+    if (document.contains(notification)) {
+      notification.style.opacity = "0";
+      notification.style.bottom = "20px";
+      setTimeout(() => {
+        if (document.contains(notification)) {
+          document.body.removeChild(notification);
+        }
+      }, 400);
+    }
+  }, 3000);
+}
+
 // AI Elements
 const aiBtn = document.getElementById("aiBtn");
 const aiPanel = document.getElementById("aiPanel");
@@ -411,11 +459,12 @@ searchInput.addEventListener("input", (e) => {
   renderTasks();
 });
 
-// Close menus when clicking outside
+// Close menus when clicking outside and reset auto-lock
 document.addEventListener('click', () => {
   document.querySelectorAll('.menu-dropdown').forEach(menu => {
     menu.classList.add('hidden');
   });
+  resetAutoLock();
 });
 
 // AI Event Listeners
@@ -521,7 +570,11 @@ function displayAiResponse(response, showAddButtons = false) {
         const div = document.createElement('div');
         div.className = 'ai-suggestion';
         div.textContent = '+ ' + cleanLine;
-        div.addEventListener('click', () => addAiTask(cleanLine));
+        div.addEventListener('click', () => {
+          if (!div.classList.contains('added')) {
+            addAiTask(cleanLine, div);
+          }
+        });
         aiContent.appendChild(div);
       } else if (line.trim()) {
         const p = document.createElement('p');
@@ -543,16 +596,19 @@ function displayAiResponse(response, showAddButtons = false) {
   }
 }
 
-function addAiTask(taskText) {
+function addAiTask(taskText, element) {
   const cleanText = taskText.replace(/\*\*/g, '').trim();
   if (cleanText) {
     tasks.unshift({ text: cleanText, completed: false, createdAt: Date.now(), priority: 'none' });
     saveTasks();
-    // Safely display the added task to prevent XSS
-    const p = document.createElement('p');
-    p.textContent = `Added: "${cleanText}"`;
-    aiContent.innerHTML = '';
-    aiContent.appendChild(p);
+
+    if (element) {
+      element.textContent = '\u2713 Added to list';
+      element.classList.add('added');
+      element.style.backgroundColor = 'rgba(76, 175, 80, 0.2)';
+      element.style.color = '#4caf50';
+      element.style.borderColor = '#4caf50';
+    }
   }
 }
 
@@ -659,7 +715,7 @@ async function saveCurrentPage() {
   try {
     // Check if chrome.tabs is available
     if (typeof chrome === 'undefined' || !chrome.tabs) {
-      alert('This feature is only available in the browser extension.');
+      showNotification('Feature only available in extension', true);
       return;
     }
 
@@ -669,7 +725,7 @@ async function saveCurrentPage() {
     if (tab && tab.url) {
       // Don't save chrome:// or extension pages
       if (tab.url.startsWith('chrome://') || tab.url.startsWith('chrome-extension://')) {
-        alert('Cannot save Chrome internal pages');
+        showNotification('Cannot save browser internal pages', true);
         return;
       }
 
@@ -679,7 +735,7 @@ async function saveCurrentPage() {
       // Check if already bookmarked
       const exists = bookmarks.some(b => b.url === url);
       if (exists) {
-        alert('This page is already bookmarked!');
+        showNotification('Page already bookmarked!', true);
         return;
       }
 
@@ -701,7 +757,7 @@ async function saveCurrentPage() {
     }
   } catch (error) {
     console.error('Error saving current page:', error);
-    alert('Could not save current page. Make sure you have an active tab open.');
+    showNotification('Could not save current page', true);
   }
 }
 
@@ -710,7 +766,7 @@ function addBookmarkManually() {
   const title = bookmarkTitleInput.value.trim();
 
   if (!url) {
-    alert('Please enter a URL');
+    showNotification('Please enter a URL', true);
     return;
   }
 
@@ -724,14 +780,14 @@ function addBookmarkManually() {
   try {
     new URL(fullUrl);
   } catch (e) {
-    alert('Please enter a valid URL');
+    showNotification('Please enter a valid URL', true);
     return;
   }
 
   // Check if already exists
   const exists = bookmarks.some(b => b.url === fullUrl);
   if (exists) {
-    alert('This URL is already bookmarked!');
+    showNotification('Already bookmarked!', true);
     return;
   }
 
@@ -771,11 +827,34 @@ function deleteBookmark(index) {
   saveBookmarks();
 }
 
+let clearBookmarksConfirming = false;
 function clearAllBookmarks() {
-  if (confirm('Are you sure you want to delete all bookmarks? This cannot be undone.')) {
-    bookmarks = [];
-    saveBookmarks();
+  if (!clearBookmarksConfirming) {
+    clearBookmarksConfirming = true;
+    clearAllBookmarksBtn.textContent = 'Are you sure? Click again';
+    clearAllBookmarksBtn.style.backgroundColor = '#E3311D';
+    clearAllBookmarksBtn.style.color = 'white';
+
+    // Reset after 3 seconds if not clicked again
+    setTimeout(() => {
+      if (clearBookmarksConfirming) {
+        clearBookmarksConfirming = false;
+        clearAllBookmarksBtn.textContent = 'Clear All Bookmarks';
+        clearAllBookmarksBtn.style.backgroundColor = '';
+        clearAllBookmarksBtn.style.color = '';
+      }
+    }, 3000);
+    return;
   }
+
+  // Confirmed
+  bookmarks = [];
+  saveBookmarks();
+  clearBookmarksConfirming = false;
+  clearAllBookmarksBtn.textContent = 'Clear All Bookmarks';
+  clearAllBookmarksBtn.style.backgroundColor = '';
+  clearAllBookmarksBtn.style.color = '';
+  showNotification('All bookmarks cleared', false);
 }
 
 function updateBookmarkCounter() {
@@ -948,12 +1027,12 @@ async function unlockSecretNotes() {
   const password = passwordInput.value.trim();
 
   if (!password) {
-    alert('Please enter a password');
+    showNotification('Please enter a password', true);
     return;
   }
 
   if (password.length < 6) {
-    alert('Password must be at least 6 characters');
+    showNotification('Minimum 6 characters', true);
     return;
   }
 
@@ -974,14 +1053,14 @@ async function unlockSecretNotes() {
           encryptedData = JSON.parse(encryptedDataStr);
         } catch (parseError) {
           console.error('Failed to parse encrypted data:', parseError);
-          alert('Vault data is corrupted. Starting with empty vault.');
+          showNotification('Vault corrupted, reset forced', true);
         }
       }
       await processUnlock(encryptedData, password);
     }
   } catch (error) {
     console.error('Unlock error:', error);
-    alert('Failed to unlock vault');
+    showNotification('Failed to unlock vault', true);
     unlockBtn.disabled = false;
     unlockBtn.textContent = 'Unlock';
   }
@@ -1002,7 +1081,7 @@ async function processUnlock(encryptedData, password) {
     const decrypted = await decryptText(encryptedData, password);
 
     if (decrypted === null) {
-      alert('Incorrect password');
+      showNotification('Incorrect password', true);
       unlockBtn.disabled = false;
       unlockBtn.textContent = 'Unlock';
       return;
@@ -1031,8 +1110,12 @@ function showSecretContent() {
 }
 
 function lockSecretNotes() {
-  // Clear any pending save to prevent race condition
-  clearTimeout(secretNoteSaveTimeout);
+  // If there is a pending save, save it now before locking
+  if (secretNoteSaveTimeout) {
+    clearTimeout(secretNoteSaveTimeout);
+    saveSecretNotes();
+  }
+
   clearTimeout(autoLockTimeout);
 
   isSecretUnlocked = false;
@@ -1099,53 +1182,74 @@ async function saveSecretNotes(password = null) {
   }
 }
 
-async function changePassword() {
+const changePasswordForm = document.getElementById("changePasswordForm");
+const oldPasswordInput = document.getElementById("oldPasswordInput");
+const newPasswordInput = document.getElementById("newPasswordInput");
+const confirmPasswordInput = document.getElementById("confirmPasswordInput");
+const saveNewPasswordBtn = document.getElementById("saveNewPasswordBtn");
+const cancelPasswordChangeBtn = document.getElementById("cancelPasswordChangeBtn");
+
+function changePassword() {
   if (!isSecretUnlocked) {
-    alert('Please unlock the vault first');
+    showNotification('Unlock vault first', true);
     return;
   }
 
-  const oldPassword = prompt('Enter current password:');
-  if (!oldPassword) return;
+  // Toggle form
+  changePasswordForm.classList.remove('hidden');
+  oldPasswordInput.focus();
+}
 
-  // Verify old password matches current session password
+saveNewPasswordBtn.addEventListener('click', async () => {
+  const oldPassword = oldPasswordInput.value;
+  const newPassword = newPasswordInput.value;
+  const confirmPassword = confirmPasswordInput.value;
+
   if (oldPassword !== currentPassword) {
-    alert('Incorrect current password');
+    showNotification('Incorrect current password', true);
     return;
   }
 
-  const newPassword = prompt('Enter new password (min 6 characters):');
-  if (!newPassword || newPassword.length < 6) {
-    alert('New password must be at least 6 characters');
+  if (newPassword.length < 6) {
+    showNotification('Minimum 6 characters', true);
     return;
   }
 
-  const confirmPassword = prompt('Confirm new password:');
   if (newPassword !== confirmPassword) {
-    alert('Passwords do not match');
+    showNotification('Passwords do not match', true);
     return;
   }
 
   try {
-    // Update password and save current content with new password
     currentPassword = newPassword;
     await saveSecretNotes(newPassword);
-    alert('Password changed successfully!');
+    showNotification('Password updated', false);
+
+    // Clear and hide form
+    oldPasswordInput.value = '';
+    newPasswordInput.value = '';
+    confirmPasswordInput.value = '';
+    changePasswordForm.classList.add('hidden');
   } catch (error) {
-    console.error('Change password error:', error);
-    alert('Failed to change password');
-    currentPassword = oldPassword; // Revert on error
+    showNotification('Failed to update password', true);
   }
-}
+});
+
+cancelPasswordChangeBtn.addEventListener('click', () => {
+  oldPasswordInput.value = '';
+  newPasswordInput.value = '';
+  confirmPasswordInput.value = '';
+  changePasswordForm.classList.add('hidden');
+});
 
 function setupAutoLock() {
   clearTimeout(autoLockTimeout);
   autoLockTimeout = setTimeout(() => {
     if (isSecretUnlocked) {
       lockSecretNotes();
-      // Only show alert if user is on the vault tab
+      // Only show notification if user is on the vault tab
       if (!secretPanel.classList.contains('hidden')) {
-        alert('Secret notes locked due to inactivity');
+        showNotification('Vault locked for safety', true);
       }
     }
   }, AUTO_LOCK_TIME);
