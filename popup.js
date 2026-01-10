@@ -20,7 +20,17 @@ const aiActions = document.querySelectorAll(".ai-action");
 // Tab Elements
 const tabBtns = document.querySelectorAll(".tab-btn");
 const tasksPanel = document.getElementById("tasksPanel");
+const calendarPanel = document.getElementById("calendarPanel");
 const notesPanel = document.getElementById("notesPanel");
+
+// Calendar Elements
+const currentMonthYearDisplay = document.getElementById("currentMonthYear");
+const calendarGrid = document.getElementById("calendarGrid");
+const prevMonthBtn = document.getElementById("prevMonth");
+const nextMonthBtn = document.getElementById("nextMonth");
+const selectedDateTasks = document.getElementById("selectedDateTasks");
+const selectedDateLabel = document.getElementById("selectedDateLabel");
+const dayTaskList = document.getElementById("dayTaskList");
 
 // Notes Elements
 const notesArea = document.getElementById("notesArea");
@@ -69,6 +79,10 @@ let autoLockTimeout = null;
 let currentPassword = null; // Store password for session
 const AUTO_LOCK_TIME = 5 * 60 * 1000; // 5 minutes
 
+// Calendar State
+let calendarDate = new Date();
+let selectedDate = new Date();
+
 // Use chrome.storage for sync across devices, fallback to localStorage
 const storage = typeof chrome !== "undefined" && chrome.storage ? chrome.storage.sync : null;
 
@@ -79,6 +93,10 @@ function loadTasks() {
       notes = result.notes || "";
       renderTasks();
       loadNotes();
+      // Refresh calendar dots if calendar is active
+      if (document.querySelector('.tab-btn[data-tab="calendar"]').classList.contains('active')) {
+        renderCalendar();
+      }
     });
   } else {
     try {
@@ -100,6 +118,10 @@ function saveTasks() {
     localStorage.setItem("tasks", JSON.stringify(tasks));
   }
   renderTasks();
+  // Refresh calendar dots if calendar is active
+  if (document.querySelector('.tab-btn[data-tab="calendar"]').classList.contains('active')) {
+    renderCalendar();
+  }
 }
 
 function renderTasks() {
@@ -303,6 +325,36 @@ function setFilter(filter) {
   });
   renderTasks();
 }
+
+// ===== TAB SYSTEM =====
+function switchTab(tabName) {
+  const panels = {
+    tasks: tasksPanel,
+    calendar: calendarPanel,
+    notes: notesPanel,
+    bookmarks: bookmarksPanel,
+    secret: secretPanel
+  };
+
+  Object.keys(panels).forEach(key => {
+    if (panels[key]) {
+      panels[key].classList.toggle("hidden", key !== tabName);
+    }
+  });
+
+  tabBtns.forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.tab === tabName);
+  });
+
+  if (tabName === 'calendar') {
+    renderCalendar();
+    showTasksForDate(selectedDate);
+  }
+}
+
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
 
 function setPriorityFilter(priority) {
   currentPriorityFilter = priority;
@@ -610,7 +662,7 @@ async function saveCurrentPage() {
       alert('This feature is only available in the browser extension.');
       return;
     }
-    
+
     // Get current active tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
 
@@ -982,7 +1034,7 @@ function lockSecretNotes() {
   // Clear any pending save to prevent race condition
   clearTimeout(secretNoteSaveTimeout);
   clearTimeout(autoLockTimeout);
-  
+
   isSecretUnlocked = false;
   decryptedSecretNotes = '';
   currentPassword = null; // Clear password from memory
@@ -999,10 +1051,10 @@ async function saveSecretNotes(password = null) {
   }
 
   const textToSave = secretNotesArea.value;
-  
+
   // Double-check vault is still unlocked before UI update
   if (!isSecretUnlocked) return;
-  
+
   secretSaveStatus.textContent = 'Encrypting...';
   secretSaveStatus.classList.add('saving');
 
@@ -1132,38 +1184,118 @@ secretNotesArea.addEventListener('input', () => {
 });
 
 
-// Update tab switching to include secret panel
-tabBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    const tab = btn.dataset.tab;
-
-    tabBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-
-    if (tab === 'tasks') {
-      tasksPanel.classList.remove('hidden');
-      notesPanel.classList.add('hidden');
-      bookmarksPanel.classList.add('hidden');
-      secretPanel.classList.add('hidden');
-    } else if (tab === 'notes') {
-      tasksPanel.classList.add('hidden');
-      notesPanel.classList.remove('hidden');
-      bookmarksPanel.classList.add('hidden');
-      secretPanel.classList.add('hidden');
-    } else if (tab === 'bookmarks') {
-      tasksPanel.classList.add('hidden');
-      notesPanel.classList.add('hidden');
-      bookmarksPanel.classList.remove('hidden');
-      secretPanel.classList.add('hidden');
-    } else if (tab === 'secret') {
-      tasksPanel.classList.add('hidden');
-      notesPanel.classList.add('hidden');
-      bookmarksPanel.classList.add('hidden');
-      secretPanel.classList.remove('hidden');
-    }
-  });
-});
-
 // Initialize
 loadTasks();
 loadBookmarks();
+
+// ===== CALENDAR FUNCTIONS =====
+
+function renderCalendar() {
+  const year = calendarDate.getFullYear();
+  const month = calendarDate.getMonth();
+
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
+
+  currentMonthYearDisplay.textContent = `${monthNames[month]} ${year}`;
+  calendarGrid.innerHTML = "";
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const daysInPrevMonth = new Date(year, month, 0).getDate();
+
+  // Prev month padding
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const dayDiv = document.createElement("div");
+    dayDiv.className = "calendar-day not-current-month";
+    dayDiv.textContent = daysInPrevMonth - i;
+    calendarGrid.appendChild(dayDiv);
+  }
+
+  // Current month days
+  const today = new Date();
+  for (let i = 1; i <= daysInMonth; i++) {
+    const dayDiv = document.createElement("div");
+    dayDiv.className = "calendar-day";
+    dayDiv.textContent = i;
+
+    if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+      dayDiv.classList.add("today");
+    }
+
+    if (i === selectedDate.getDate() && month === selectedDate.getMonth() && year === selectedDate.getFullYear()) {
+      dayDiv.classList.add("selected");
+    }
+
+    // Check if this date has any tasks (placeholder for future date-specific tasks)
+    // For now, we'll just check if any tasks were created on this day
+    const hasTasksOnDay = tasks.some(task => {
+      const taskDate = new Date(task.createdAt);
+      return taskDate.getDate() === i &&
+        taskDate.getMonth() === month &&
+        taskDate.getFullYear() === year;
+    });
+
+    if (hasTasksOnDay) {
+      dayDiv.classList.add("has-tasks");
+    }
+
+    dayDiv.addEventListener("click", () => {
+      selectedDate = new Date(year, month, i);
+      renderCalendar();
+      showTasksForDate(selectedDate);
+    });
+
+    calendarGrid.appendChild(dayDiv);
+  }
+
+  // Next month padding
+  const totalSlots = 42; // 6 rows of 7 days
+  const remainingSlots = totalSlots - calendarGrid.children.length;
+  for (let i = 1; i <= remainingSlots; i++) {
+    const dayDiv = document.createElement("div");
+    dayDiv.className = "calendar-day not-current-month";
+    dayDiv.textContent = i;
+    calendarGrid.appendChild(dayDiv);
+  }
+}
+
+function showTasksForDate(date) {
+  selectedDateTasks.classList.remove("hidden");
+  const options = { month: 'short', day: 'numeric' };
+  selectedDateLabel.textContent = `Tasks for ${date.toLocaleDateString(undefined, options)}`;
+
+  dayTaskList.innerHTML = "";
+  const tasksForDay = tasks.filter(task => {
+    const taskDate = new Date(task.createdAt);
+    return taskDate.getDate() === date.getDate() &&
+      taskDate.getMonth() === date.getMonth() &&
+      taskDate.getFullYear() === date.getFullYear();
+  });
+
+  if (tasksForDay.length === 0) {
+    const li = document.createElement("li");
+    li.style.background = "transparent";
+    li.style.color = "#666";
+    li.style.textAlign = "center";
+    li.textContent = "No tasks for this day";
+    dayTaskList.appendChild(li);
+  } else {
+    tasksForDay.forEach(task => {
+      const li = document.createElement("li");
+      li.textContent = task.text;
+      if (task.completed) li.style.textDecoration = "line-through";
+      dayTaskList.appendChild(li);
+    });
+  }
+}
+
+prevMonthBtn.addEventListener("click", () => {
+  calendarDate.setMonth(calendarDate.getMonth() - 1);
+  renderCalendar();
+});
+
+nextMonthBtn.addEventListener("click", () => {
+  calendarDate.setMonth(calendarDate.getMonth() + 1);
+  renderCalendar();
+});

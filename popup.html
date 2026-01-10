@@ -18,6 +18,7 @@
   <div class="main-container">
     <div class="tabs">
       <button class="tab-btn active" data-tab="tasks">Tasks</button>
+      <button class="tab-btn" data-tab="calendar">Calendar</button>
       <button class="tab-btn" data-tab="notes">Notes</button>
       <button class="tab-btn" data-tab="bookmarks">Links</button>
       <button class="tab-btn" data-tab="secret">Vault</button>
@@ -87,6 +88,22 @@
         </div>
 
         <button id="clearCompleted" class="clear-btn">Clear Completed</button>
+      </div>
+
+      <div id="calendarPanel" class="panel hidden">
+        <div class="calendar-header">
+          <button id="prevMonth" class="cal-nav-btn">&lt;</button>
+          <h3 id="currentMonthYear">January 2026</h3>
+          <button id="nextMonth" class="cal-nav-btn">&gt;</button>
+        </div>
+        <div class="calendar-grid-header">
+          <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+        <div id="selectedDateTasks" class="selected-date-tasks hidden">
+          <h4 id="selectedDateLabel">Tasks for Jan 10</h4>
+          <ul id="dayTaskList"></ul>
+        </div>
       </div>
 
       <div id="bookmarksPanel" class="panel hidden">
