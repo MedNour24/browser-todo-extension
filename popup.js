@@ -1227,13 +1227,13 @@ function renderCalendar() {
       dayDiv.classList.add("selected");
     }
 
-    // Check if this date has any tasks (placeholder for future date-specific tasks)
-    // For now, we'll just check if any tasks were created on this day
+    // Check if any tasks were created on this exact day
     const hasTasksOnDay = tasks.some(task => {
-      const taskDate = new Date(task.createdAt);
-      return taskDate.getDate() === i &&
-        taskDate.getMonth() === month &&
-        taskDate.getFullYear() === year;
+      if (!task.createdAt) return false;
+      const tDate = new Date(task.createdAt);
+      return tDate.getDate() === i &&
+        tDate.getMonth() === month &&
+        tDate.getFullYear() === year;
     });
 
     if (hasTasksOnDay) {
