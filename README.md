@@ -2,7 +2,7 @@
 
 > A beautiful, feature-rich task management extension with AI assistance, encrypted notes, and a modern dark interface.
 
-![Version](https://img.shields.io/badge/version-3.0-blue.svg)
+![Version](https://img.shields.io/badge/version-3.1-blue.svg)
 ![Manifest](https://img.shields.io/badge/manifest-v3-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 
@@ -42,8 +42,15 @@
 - Search bookmarks by title or URL
 - Click to open in new tab
 - Individual or bulk delete
-- Cloud sync across devices
 - Bookmark counter
+- Cloud sync across devices
+
+### Calendar
+- Interactive monthly view
+- Visual indicators for days with tasks
+- Click a date to see tasks created on that day
+- Today's date highlighting
+- Easy month navigation
 
 
 ### Private Vault (Encrypted Notes)
@@ -285,10 +292,16 @@ body {
 
 ## 📝 Changelog
 
-### Version 3.0 (Current)
+### Version 3.1 (Current)
+- 📅 Added **Calendar** feature
+- 🎯 Integrated tasks with calendar view
 - 🚀 Rebranded as **Luna**
 - 🎨 UI polish and consistency updates
 - 🏷️ Updated all branding to Luna
+
+### Version 3.0
+- Renamed everything to Luna
+- Updated versioning for major rebrand
 
 ### Version 2.4
 - 🔖 Added Bookmarks/Saved Links feature
@@ -375,7 +388,7 @@ SOFTWARE.
 - Icons and design inspired by modern productivity apps
 - Encryption implementation based on Web Crypto API standards
 - AI features powered by Azure AI Models
-- Built with ❤️ for productive users everywhere
+- Built with ❤️ for students everywhere
 
 ## 📧 Contact
 
@@ -387,7 +400,7 @@ For questions, suggestions, or issues:
 
 <div align="center">
 
-**Made with ❤️ for productivity**
+**Made with ❤️ for productive students**
 
 ⭐ Star this repo if you find it helpful!
 

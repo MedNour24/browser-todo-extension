@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "Luna",
-  "version": "3.0",
+  "version": "3.1",
   "description": "A beautiful and productive task manager with AI, encryption, and more.",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Luna"
+    "default_title": "Luna",
+    "default_icon": "icon.png"
   },
   "permissions": [
     "storage",
