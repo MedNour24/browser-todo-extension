@@ -90,12 +90,16 @@ const bookmarksPanel = document.getElementById("bookmarksPanel");
 const saveCurrentPageBtn = document.getElementById("saveCurrentPageBtn");
 const bookmarkUrlInput = document.getElementById("bookmarkUrlInput");
 const bookmarkTitleInput = document.getElementById("bookmarkTitleInput");
+const bookmarkCategorySelect = document.getElementById("bookmarkCategorySelect");
 const addBookmarkBtn = document.getElementById("addBookmarkBtn");
 const bookmarkSearchInput = document.getElementById("bookmarkSearchInput");
 const bookmarkList = document.getElementById("bookmarkList");
 const bookmarkCounter = document.getElementById("bookmarkCounter");
 const bookmarkEmptyState = document.getElementById("bookmarkEmptyState");
 const clearAllBookmarksBtn = document.getElementById("clearAllBookmarks");
+const categoryFilterBtns = document.querySelectorAll(".category-filter-btn");
+const listViewBtn = document.getElementById("listViewBtn");
+const gridViewBtn = document.getElementById("gridViewBtn");
 
 
 // Secret Notes Elements
@@ -114,6 +118,8 @@ let tasks = [];
 let notes = "";
 let bookmarks = [];
 let bookmarkSearchQuery = "";
+let currentBookmarkCategory = "all";
+let currentBookmarkView = "list";
 let currentFilter = "all";
 let currentPriorityFilter = "all";
 let searchQuery = "";
@@ -640,14 +646,35 @@ function saveBookmarks() {
   renderBookmarks();
 }
 
+// Category emoji map
+const categoryEmojis = {
+  work: '💼',
+  personal: '🏠',
+  learning: '📚',
+  entertainment: '🎮',
+  shopping: '🛒',
+  social: '👥',
+  news: '📰',
+  tools: '🔧',
+  inspiration: '✨',
+  readlater: '📖'
+};
+
 function renderBookmarks() {
   bookmarkList.innerHTML = "";
 
   const filteredBookmarks = bookmarks.filter((bookmark) => {
+    // Filter by search query
     if (bookmarkSearchQuery &&
       !bookmark.title.toLowerCase().includes(bookmarkSearchQuery.toLowerCase()) &&
       !bookmark.url.toLowerCase().includes(bookmarkSearchQuery.toLowerCase())) {
       return false;
+    }
+    // Filter by category
+    if (currentBookmarkCategory !== "all") {
+      if (bookmark.category !== currentBookmarkCategory) {
+        return false;
+      }
     }
     return true;
   });
@@ -666,7 +693,11 @@ function renderBookmarks() {
       domain = bookmark.url;
     }
 
+    // Get category emoji
+    const categoryEmoji = bookmark.category ? categoryEmojis[bookmark.category] || '' : '';
+
     li.innerHTML = `
+      ${categoryEmoji ? `<span class="bookmark-category-badge">${categoryEmoji}</span>` : ''}
       <div class="bookmark-content">
         <div class="bookmark-favicon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
@@ -739,21 +770,8 @@ async function saveCurrentPage() {
         return;
       }
 
-      bookmarks.unshift({
-        title: title,
-        url: url,
-        createdAt: Date.now()
-      });
-
-      saveBookmarks();
-
-      // Visual feedback
-      saveCurrentPageBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Saved!';
-      saveCurrentPageBtn.style.background = '#4caf50';
-      setTimeout(() => {
-        saveCurrentPageBtn.innerHTML = '<span class="bookmark-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></span> Save Current Page';
-        saveCurrentPageBtn.style.background = '';
-      }, 2000);
+      // Show category picker modal
+      showCategoryModal(title, url);
     }
   } catch (error) {
     console.error('Error saving current page:', error);
@@ -761,9 +779,70 @@ async function saveCurrentPage() {
   }
 }
 
+// Category Modal Functions
+let pendingBookmark = null;
+
+function showCategoryModal(title, url) {
+  pendingBookmark = { title, url };
+  const modal = document.getElementById('categoryModal');
+  const modalTitle = document.getElementById('modalPageTitle');
+  modalTitle.textContent = title;
+  modal.classList.remove('hidden');
+}
+
+function hideCategoryModal() {
+  const modal = document.getElementById('categoryModal');
+  modal.classList.add('hidden');
+  pendingBookmark = null;
+}
+
+function savePendingBookmark(category) {
+  if (!pendingBookmark) return;
+
+  bookmarks.unshift({
+    title: pendingBookmark.title,
+    url: pendingBookmark.url,
+    category: category || null,
+    createdAt: Date.now()
+  });
+
+  saveBookmarks();
+  hideCategoryModal();
+
+  // Visual feedback
+  saveCurrentPageBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Saved!';
+  saveCurrentPageBtn.style.background = '#4caf50';
+  setTimeout(() => {
+    saveCurrentPageBtn.innerHTML = '<span class="bookmark-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg></span> Save Current Page';
+    saveCurrentPageBtn.style.background = '';
+  }, 2000);
+}
+
+// Category Modal Event Listeners
+document.querySelectorAll('.category-option').forEach(btn => {
+  btn.addEventListener('click', () => {
+    savePendingBookmark(btn.dataset.category);
+  });
+});
+
+const cancelCategoryModalBtn = document.getElementById('cancelCategoryModal');
+if (cancelCategoryModalBtn) {
+  cancelCategoryModalBtn.addEventListener('click', hideCategoryModal);
+}
+
+const categoryModal = document.getElementById('categoryModal');
+if (categoryModal) {
+  categoryModal.addEventListener('click', (e) => {
+    if (e.target.id === 'categoryModal') {
+      hideCategoryModal();
+    }
+  });
+}
+
 function addBookmarkManually() {
   const url = bookmarkUrlInput.value.trim();
   const title = bookmarkTitleInput.value.trim();
+  const category = bookmarkCategorySelect.value;
 
   if (!url) {
     showNotification('Please enter a URL', true);
@@ -805,12 +884,14 @@ function addBookmarkManually() {
   bookmarks.unshift({
     title: finalTitle,
     url: fullUrl,
+    category: category || null,
     createdAt: Date.now()
   });
 
   saveBookmarks();
   bookmarkUrlInput.value = '';
   bookmarkTitleInput.value = '';
+  bookmarkCategorySelect.value = '';
 }
 
 function openBookmark(url) {
@@ -883,6 +964,37 @@ bookmarkSearchInput.addEventListener('input', (e) => {
   renderBookmarks();
 });
 clearAllBookmarksBtn.addEventListener('click', clearAllBookmarks);
+
+// Category Filter Event Listeners
+categoryFilterBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    categoryFilterBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentBookmarkCategory = btn.dataset.category;
+    renderBookmarks();
+  });
+});
+
+// View Toggle Event Listeners
+if (listViewBtn) {
+  listViewBtn.addEventListener('click', () => {
+    listViewBtn.classList.add('active');
+    if (gridViewBtn) gridViewBtn.classList.remove('active');
+    bookmarkList.classList.remove('grid-view');
+    bookmarkList.classList.add('list-view');
+    currentBookmarkView = 'list';
+  });
+}
+
+if (gridViewBtn) {
+  gridViewBtn.addEventListener('click', () => {
+    gridViewBtn.classList.add('active');
+    if (listViewBtn) listViewBtn.classList.remove('active');
+    bookmarkList.classList.remove('list-view');
+    bookmarkList.classList.add('grid-view');
+    currentBookmarkView = 'grid';
+  });
+}
 
 
 // Notes Functions
@@ -1002,6 +1114,12 @@ async function encryptText(text, password) {
 // Decrypt text
 async function decryptText(encryptedData, password) {
   try {
+    // Validate encrypted data structure
+    if (!encryptedData || !encryptedData.salt || !encryptedData.iv || !encryptedData.encrypted) {
+      console.error('Decryption error: Invalid encrypted data structure');
+      return null;
+    }
+
     const salt = base642ab(encryptedData.salt);
     const iv = base642ab(encryptedData.iv);
     const encrypted = base642ab(encryptedData.encrypted);
@@ -1016,7 +1134,12 @@ async function decryptText(encryptedData, password) {
 
     return ab2str(decrypted);
   } catch (error) {
-    console.error('Decryption error:', error);
+    // Handle DOMException (wrong password) vs other errors
+    if (error.name === 'OperationError') {
+      console.error('Decryption error: Wrong password or corrupted data');
+    } else {
+      console.error('Decryption error:', error.name, error.message);
+    }
     return null;
   }
 }
@@ -1156,7 +1279,7 @@ async function saveSecretNotes(password = null) {
     const encrypted = await encryptText(textToSave, password);
 
     if (!encrypted) {
-      alert('Failed to encrypt notes');
+      showNotification('Failed to encrypt notes', true);
       secretSaveStatus.textContent = 'Save failed';
       secretSaveStatus.classList.remove('saving');
       return;

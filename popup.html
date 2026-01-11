@@ -2,6 +2,8 @@
 <html>
 
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Luna</title>
   <link rel="stylesheet" href="popup.css">
 </head>
@@ -121,6 +123,19 @@
         <div class="bookmark-input-container">
           <input type="text" id="bookmarkUrlInput" placeholder="Or paste URL manually..." />
           <input type="text" id="bookmarkTitleInput" placeholder="Title (optional)" />
+          <select id="bookmarkCategorySelect" class="category-select">
+            <option value="">📁 Category</option>
+            <option value="work">💼 Work</option>
+            <option value="personal">🏠 Personal</option>
+            <option value="learning">📚 Learning</option>
+            <option value="entertainment">🎮 Entertainment</option>
+            <option value="shopping">🛒 Shopping</option>
+            <option value="social">👥 Social</option>
+            <option value="news">📰 News</option>
+            <option value="tools">🔧 Tools</option>
+            <option value="inspiration">✨ Inspiration</option>
+            <option value="readlater">📖 Read Later</option>
+          </select>
           <button id="addBookmarkBtn">+</button>
         </div>
 
@@ -129,11 +144,29 @@
           <span class="search-icon"></span>
         </div>
 
-        <div class="bookmark-stats">
-          <span id="bookmarkCounter">0 bookmarks</span>
+        <div class="category-filters">
+          <button class="category-filter-btn active" data-category="all" title="All">🌐</button>
+          <button class="category-filter-btn" data-category="work" title="Work">💼</button>
+          <button class="category-filter-btn" data-category="personal" title="Personal">🏠</button>
+          <button class="category-filter-btn" data-category="learning" title="Learning">📚</button>
+          <button class="category-filter-btn" data-category="entertainment" title="Entertainment">🎮</button>
+          <button class="category-filter-btn" data-category="shopping" title="Shopping">🛒</button>
+          <button class="category-filter-btn" data-category="social" title="Social">👥</button>
+          <button class="category-filter-btn" data-category="news" title="News">📰</button>
+          <button class="category-filter-btn" data-category="tools" title="Tools">🔧</button>
+          <button class="category-filter-btn" data-category="inspiration" title="Inspiration">✨</button>
+          <button class="category-filter-btn" data-category="readlater" title="Read Later">📖</button>
         </div>
 
-        <ul id="bookmarkList"></ul>
+        <div class="bookmark-stats">
+          <span id="bookmarkCounter">0 bookmarks</span>
+          <div class="view-toggle">
+            <button id="listViewBtn" class="view-btn active" title="List View">☰</button>
+            <button id="gridViewBtn" class="view-btn" title="Grid View">⊞</button>
+          </div>
+        </div>
+
+        <ul id="bookmarkList" class="list-view"></ul>
 
         <div id="bookmarkEmptyState" class="empty-state">
           <p>No saved links yet! Save the current page or add a URL above.</p>
@@ -196,6 +229,28 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Category Picker Modal -->
+  <div id="categoryModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Choose a Category</h3>
+      <p id="modalPageTitle" class="modal-page-title">Page title here</p>
+      <div class="category-grid">
+        <button class="category-option" data-category="">🔗 None</button>
+        <button class="category-option" data-category="work">💼 Work</button>
+        <button class="category-option" data-category="personal">🏠 Personal</button>
+        <button class="category-option" data-category="learning">📚 Learning</button>
+        <button class="category-option" data-category="entertainment">🎮 Entertainment</button>
+        <button class="category-option" data-category="shopping">🛒 Shopping</button>
+        <button class="category-option" data-category="social">👥 Social</button>
+        <button class="category-option" data-category="news">📰 News</button>
+        <button class="category-option" data-category="tools">🔧 Tools</button>
+        <button class="category-option" data-category="inspiration">✨ Inspiration</button>
+        <button class="category-option" data-category="readlater">📖 Read Later</button>
+      </div>
+      <button id="cancelCategoryModal" class="modal-cancel">Cancel</button>
     </div>
   </div>
 
