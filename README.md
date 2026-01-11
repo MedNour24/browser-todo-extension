@@ -76,7 +76,7 @@
 
 1. **Clone or Download** this repository:
    ```bash
-   git clone https://github.com/yourusername/student-todo-extension.git
+   git clone https://github.com/MedNour24/student-todo-extension.git
    ```
 
 2. **Open Chrome Extensions**:
