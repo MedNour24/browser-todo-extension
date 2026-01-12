@@ -100,8 +100,6 @@ const clearAllBookmarksBtn = document.getElementById("clearAllBookmarks");
 const categoryFilterBtns = document.querySelectorAll(".category-filter-btn");
 const listViewBtn = document.getElementById("listViewBtn");
 const gridViewBtn = document.getElementById("gridViewBtn");
-const openAllLinksBtn = document.getElementById("openAllLinks");
-const bulkDeleteLinksBtn = document.getElementById("bulkDeleteLinks");
 
 
 // Secret Notes Elements
@@ -685,11 +683,6 @@ function renderBookmarks() {
 
   const filteredBookmarks = getFilteredBookmarks();
 
-  // Update panel status for bulk actions visibility
-  if (bookmarksPanel) {
-    bookmarksPanel.classList.toggle('empty', filteredBookmarks.length === 0);
-  }
-
   filteredBookmarks.forEach((bookmark, index) => {
     const actualIndex = bookmarks.indexOf(bookmark);
     const li = document.createElement("li");
@@ -975,35 +968,6 @@ bookmarkSearchInput.addEventListener('input', (e) => {
   renderBookmarks();
 });
 clearAllBookmarksBtn.addEventListener('click', clearAllBookmarks);
-
-if (openAllLinksBtn) {
-  openAllLinksBtn.addEventListener('click', () => {
-    const filtered = getFilteredBookmarks();
-    if (filtered.length === 0) return;
-
-    if (filtered.length > 5) {
-      if (!confirm(`Open ${filtered.length} links in new tabs?`)) return;
-    }
-
-    filtered.forEach(b => openBookmark(b.url));
-    showNotification(`Opening ${filtered.length} links...`, false);
-  });
-}
-
-if (bulkDeleteLinksBtn) {
-  bulkDeleteLinksBtn.addEventListener('click', () => {
-    const filtered = getFilteredBookmarks();
-    if (filtered.length === 0) return;
-
-    if (confirm(`Delete ${filtered.length} filtered bookmarks?`)) {
-      // Remove filtered bookmarks from the main bookmarks array
-      const filteredUrls = new Set(filtered.map(b => b.url));
-      bookmarks = bookmarks.filter(b => !filteredUrls.has(b.url));
-      saveBookmarks();
-      showNotification('Filtered bookmarks deleted', false);
-    }
-  });
-}
 
 // Category Filter Event Listeners
 categoryFilterBtns.forEach(btn => {

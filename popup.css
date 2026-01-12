@@ -1230,50 +1230,6 @@ li.completed .task-text {
   padding: 0 5px;
 }
 
-.stats-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.bulk-actions {
-  display: flex;
-  gap: 4px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease;
-}
-
-#bookmarksPanel:not(.empty) .bulk-actions {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.bulk-action-btn {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  background: var(--gray);
-  color: #888;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-
-.bulk-action-btn:hover {
-  background: var(--gray-light);
-  color: var(--light);
-  transform: translateY(-1px);
-}
-
-.bulk-action-btn.delete:hover {
-  background: var(--primary);
-  color: white;
-}
-
 #bookmarkCounter {
   background: var(--primary);
   color: var(--light);
