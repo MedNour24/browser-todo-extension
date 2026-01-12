@@ -1168,14 +1168,12 @@ li.completed .task-text {
 }
 
 #bookmarkList.grid-view .bookmark-category-badge {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  font-size: 14px;
-  margin-left: 0;
-  background: var(--gray);
-  border-radius: 6px;
-  padding: 2px 4px;
+  top: -6px;
+  right: -6px;
+  font-size: 12px;
+  background: var(--primary);
+  border: 2px solid var(--dark);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* List View */
@@ -1186,12 +1184,25 @@ li.completed .task-text {
 /* Category Badge */
 .bookmark-category-badge {
   position: absolute;
-  top: 50%;
-  right: 90px;
-  transform: translateY(-50%);
-  font-size: 16px;
-  opacity: 0.9;
-  z-index: 1;
+  top: -8px;
+  right: -8px;
+  font-size: 12px;
+  background: var(--primary);
+  color: white;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--dark);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.bookmark-item:hover .bookmark-category-badge {
+  transform: scale(1.2);
 }
 
 .bookmark-search-container {
@@ -1217,6 +1228,50 @@ li.completed .task-text {
   align-items: center;
   margin-bottom: 10px;
   padding: 0 5px;
+}
+
+.stats-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bulk-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+#bookmarksPanel:not(.empty) .bulk-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.bulk-action-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--gray);
+  color: #888;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.bulk-action-btn:hover {
+  background: var(--gray-light);
+  color: var(--light);
+  transform: translateY(-1px);
+}
+
+.bulk-action-btn.delete:hover {
+  background: var(--primary);
+  color: white;
 }
 
 #bookmarkCounter {
@@ -1276,6 +1331,7 @@ li.completed .task-text {
   justify-content: center;
   font-size: 18px;
   flex-shrink: 0;
+  position: relative;
 }
 
 .bookmark-info {
@@ -1886,6 +1942,7 @@ li.completed .task-text {
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
