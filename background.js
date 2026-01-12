@@ -43,11 +43,14 @@ async function correctText(text) {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('AI API Key is missing or invalid.');
+    }
     throw new Error(`API error: ${response.status}`);
   }
 
   const data = await response.json();
-  return data.choices[0].message.content.trim();
+  return data.choices ? data.choices[0].message.content.trim() : text;
 }
 
 async function callGitHubAI(prompt) {
@@ -75,10 +78,13 @@ async function callGitHubAI(prompt) {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('AI API Key is missing or invalid. Please check your background.js file.');
+    }
     const errorText = await response.text();
-    throw new Error(`API error: ${response.status} - ${errorText}`);
+    throw new Error(`AI error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  return data.choices ? data.choices[0].message.content : 'No response from AI';
 }
