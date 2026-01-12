@@ -100,6 +100,8 @@ const clearAllBookmarksBtn = document.getElementById("clearAllBookmarks");
 const categoryFilterBtns = document.querySelectorAll(".category-filter-btn");
 const listViewBtn = document.getElementById("listViewBtn");
 const gridViewBtn = document.getElementById("gridViewBtn");
+const openAllLinksBtn = document.getElementById("openAllLinks");
+const bulkDeleteLinksBtn = document.getElementById("bulkDeleteLinks");
 
 
 // Secret Notes Elements
@@ -660,10 +662,8 @@ const categoryEmojis = {
   readlater: '📖'
 };
 
-function renderBookmarks() {
-  bookmarkList.innerHTML = "";
-
-  const filteredBookmarks = bookmarks.filter((bookmark) => {
+function getFilteredBookmarks() {
+  return bookmarks.filter((bookmark) => {
     // Filter by search query
     if (bookmarkSearchQuery &&
       !bookmark.title.toLowerCase().includes(bookmarkSearchQuery.toLowerCase()) &&
@@ -678,6 +678,17 @@ function renderBookmarks() {
     }
     return true;
   });
+}
+
+function renderBookmarks() {
+  bookmarkList.innerHTML = "";
+
+  const filteredBookmarks = getFilteredBookmarks();
+
+  // Update panel status for bulk actions visibility
+  if (bookmarksPanel) {
+    bookmarksPanel.classList.toggle('empty', filteredBookmarks.length === 0);
+  }
 
   filteredBookmarks.forEach((bookmark, index) => {
     const actualIndex = bookmarks.indexOf(bookmark);
@@ -697,9 +708,9 @@ function renderBookmarks() {
     const categoryEmoji = bookmark.category ? categoryEmojis[bookmark.category] || '' : '';
 
     li.innerHTML = `
-      ${categoryEmoji ? `<span class="bookmark-category-badge">${categoryEmoji}</span>` : ''}
       <div class="bookmark-content">
         <div class="bookmark-favicon">
+          ${categoryEmoji ? `<span class="bookmark-category-badge">${categoryEmoji}</span>` : ''}
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         </div>
         <div class="bookmark-info">
@@ -964,6 +975,35 @@ bookmarkSearchInput.addEventListener('input', (e) => {
   renderBookmarks();
 });
 clearAllBookmarksBtn.addEventListener('click', clearAllBookmarks);
+
+if (openAllLinksBtn) {
+  openAllLinksBtn.addEventListener('click', () => {
+    const filtered = getFilteredBookmarks();
+    if (filtered.length === 0) return;
+
+    if (filtered.length > 5) {
+      if (!confirm(`Open ${filtered.length} links in new tabs?`)) return;
+    }
+
+    filtered.forEach(b => openBookmark(b.url));
+    showNotification(`Opening ${filtered.length} links...`, false);
+  });
+}
+
+if (bulkDeleteLinksBtn) {
+  bulkDeleteLinksBtn.addEventListener('click', () => {
+    const filtered = getFilteredBookmarks();
+    if (filtered.length === 0) return;
+
+    if (confirm(`Delete ${filtered.length} filtered bookmarks?`)) {
+      // Remove filtered bookmarks from the main bookmarks array
+      const filteredUrls = new Set(filtered.map(b => b.url));
+      bookmarks = bookmarks.filter(b => !filteredUrls.has(b.url));
+      saveBookmarks();
+      showNotification('Filtered bookmarks deleted', false);
+    }
+  });
+}
 
 // Category Filter Event Listeners
 categoryFilterBtns.forEach(btn => {
