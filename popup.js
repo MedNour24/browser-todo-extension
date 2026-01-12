@@ -100,8 +100,6 @@ const clearAllBookmarksBtn = document.getElementById("clearAllBookmarks");
 const categoryFilterBtns = document.querySelectorAll(".category-filter-btn");
 const listViewBtn = document.getElementById("listViewBtn");
 const gridViewBtn = document.getElementById("gridViewBtn");
-const openAllLinksBtn = document.getElementById("openAllLinks");
-const bulkDeleteLinksBtn = document.getElementById("bulkDeleteLinks");
 
 
 // Secret Notes Elements
@@ -142,14 +140,18 @@ let selectedDate = new Date();
 // Use chrome.storage for sync across devices, fallback to localStorage
 const storage = typeof chrome !== "undefined" && chrome.storage ? chrome.storage.sync : null;
 
-function loadTasks() {
+function loadAllData() {
   if (storage) {
-    storage.get(["tasks", "notes"], (result) => {
+    storage.get(["tasks", "notes", "bookmarks", "secretNotes"], (result) => {
       tasks = result.tasks || [];
       notes = result.notes || "";
+      bookmarks = result.bookmarks || [];
+
       renderTasks();
       loadNotes();
-      // Refresh calendar dots if calendar is active
+      renderBookmarks();
+      updateVaultHint(!!result.secretNotes);
+
       if (document.querySelector('.tab-btn[data-tab="calendar"]').classList.contains('active')) {
         renderCalendar();
       }
@@ -157,13 +159,28 @@ function loadTasks() {
   } else {
     try {
       tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+      bookmarks = JSON.parse(localStorage.getItem("bookmarks")) || [];
     } catch (e) {
-      console.error('Failed to parse tasks from localStorage:', e);
+      console.error('Failed to parse data from localStorage:', e);
       tasks = [];
+      bookmarks = [];
     }
     notes = localStorage.getItem("notes") || "";
+    const hasSecret = !!localStorage.getItem("secretNotes");
+
     renderTasks();
     loadNotes();
+    renderBookmarks();
+    updateVaultHint(hasSecret);
+  }
+}
+
+function updateVaultHint(exists) {
+  const hint = document.querySelector('.password-hint');
+  if (hint) {
+    hint.textContent = exists
+      ? "Enter your password to access your encrypted notes."
+      : "First time? Set a password to create your private vault.";
   }
 }
 
@@ -244,7 +261,7 @@ function renderTasks() {
         <button class="priority-badge ${priority}" title="Priority: ${priority}">
           <span class="priority-indicator"></span>
         </button>
-        <span class="task-text">${escapeHtml(task.text)}</span>
+        <span class="task-text" dir="auto">${escapeHtml(task.text)}</span>
         <div class="task-menu">
           <button class="menu-btn" title="Options"><span class="dots"></span></button>
           <div class="menu-dropdown hidden">
@@ -288,9 +305,19 @@ function renderTasks() {
     list.appendChild(li);
   });
 
-  updateCounter();
+  updateCounter(filteredTasks.length);
   updateEmptyState(filteredTasks.length);
   updateClearButton();
+}
+
+function updateCounter(visibleCount) {
+  const total = tasks.length;
+  if (searchQuery && total > 0) {
+    counter.textContent = `${visibleCount} found / ${total} total`;
+  } else {
+    const active = tasks.filter((t) => !t.completed).length;
+    counter.textContent = `${active}/${total} tasks`;
+  }
 }
 
 function escapeHtml(text) {
@@ -685,11 +712,6 @@ function renderBookmarks() {
 
   const filteredBookmarks = getFilteredBookmarks();
 
-  // Update panel status for bulk actions visibility
-  if (bookmarksPanel) {
-    bookmarksPanel.classList.toggle('empty', filteredBookmarks.length === 0);
-  }
-
   filteredBookmarks.forEach((bookmark, index) => {
     const actualIndex = bookmarks.indexOf(bookmark);
     const li = document.createElement("li");
@@ -714,8 +736,8 @@ function renderBookmarks() {
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         </div>
         <div class="bookmark-info">
-          <div class="bookmark-title">${escapeHtml(bookmark.title)}</div>
-          <div class="bookmark-url">${escapeHtml(domain)}</div>
+          <div class="bookmark-title" dir="auto">${escapeHtml(bookmark.title)}</div>
+          <div class="bookmark-url" dir="ltr">${escapeHtml(domain)}</div>
         </div>
         <div class="bookmark-actions">
           <button class="bookmark-open-btn" title="Open in new tab">
@@ -727,7 +749,6 @@ function renderBookmarks() {
         </div>
       </div>
     `;
-
     // Add event listeners
     li.querySelector('.bookmark-content').addEventListener('click', (e) => {
       if (!e.target.closest('.bookmark-actions')) {
@@ -748,7 +769,7 @@ function renderBookmarks() {
     bookmarkList.appendChild(li);
   });
 
-  updateBookmarkCounter();
+  updateBookmarkCounter(filteredBookmarks.length);
   updateBookmarkEmptyState(filteredBookmarks.length);
   updateClearAllButton();
 }
@@ -949,8 +970,13 @@ function clearAllBookmarks() {
   showNotification('All bookmarks cleared', false);
 }
 
-function updateBookmarkCounter() {
-  bookmarkCounter.textContent = `${bookmarks.length} bookmark${bookmarks.length !== 1 ? 's' : ''}`;
+function updateBookmarkCounter(visibleCount) {
+  const total = bookmarks.length;
+  if (bookmarkSearchQuery || currentBookmarkCategory !== "all") {
+    bookmarkCounter.textContent = `${visibleCount} found / ${total} total`;
+  } else {
+    bookmarkCounter.textContent = `${total} link${total !== 1 ? 's' : ''}`;
+  }
 }
 
 function updateBookmarkEmptyState(count) {
@@ -975,35 +1001,6 @@ bookmarkSearchInput.addEventListener('input', (e) => {
   renderBookmarks();
 });
 clearAllBookmarksBtn.addEventListener('click', clearAllBookmarks);
-
-if (openAllLinksBtn) {
-  openAllLinksBtn.addEventListener('click', () => {
-    const filtered = getFilteredBookmarks();
-    if (filtered.length === 0) return;
-
-    if (filtered.length > 5) {
-      if (!confirm(`Open ${filtered.length} links in new tabs?`)) return;
-    }
-
-    filtered.forEach(b => openBookmark(b.url));
-    showNotification(`Opening ${filtered.length} links...`, false);
-  });
-}
-
-if (bulkDeleteLinksBtn) {
-  bulkDeleteLinksBtn.addEventListener('click', () => {
-    const filtered = getFilteredBookmarks();
-    if (filtered.length === 0) return;
-
-    if (confirm(`Delete ${filtered.length} filtered bookmarks?`)) {
-      // Remove filtered bookmarks from the main bookmarks array
-      const filteredUrls = new Set(filtered.map(b => b.url));
-      bookmarks = bookmarks.filter(b => !filteredUrls.has(b.url));
-      saveBookmarks();
-      showNotification('Filtered bookmarks deleted', false);
-    }
-  });
-}
 
 // Category Filter Event Listeners
 categoryFilterBtns.forEach(btn => {
@@ -1452,8 +1449,7 @@ secretNotesArea.addEventListener('input', () => {
 
 
 // Initialize
-loadTasks();
-loadBookmarks();
+loadAllData();
 
 // ===== CALENDAR FUNCTIONS =====
 
