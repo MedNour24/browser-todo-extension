@@ -131,6 +131,7 @@ let decryptedSecretNotes = "";
 let isSecretUnlocked = false;
 let autoLockTimeout = null;
 let currentPassword = null; // Store password for session
+let isSavingSecretNotes = false; // Lock flag to prevent race conditions
 const AUTO_LOCK_TIME = 5 * 60 * 1000; // 5 minutes
 
 // Calendar State
@@ -152,7 +153,9 @@ function loadAllData() {
       renderBookmarks();
       updateVaultHint(!!result.secretNotes);
 
-      if (document.querySelector('.tab-btn[data-tab="calendar"]').classList.contains('active')) {
+      // Safely check if calendar tab is active
+      const calendarTab = document.querySelector('.tab-btn[data-tab="calendar"]');
+      if (calendarTab && calendarTab.classList.contains('active')) {
         renderCalendar();
       }
     });
@@ -186,19 +189,45 @@ function updateVaultHint(exists) {
 
 function saveTasks() {
   if (storage) {
-    storage.set({ tasks });
+    storage.set({ tasks }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Storage error:', chrome.runtime.lastError);
+        if (chrome.runtime.lastError.message.includes('QUOTA')) {
+          showNotification('⚠️ Storage full! Please delete some tasks.', true);
+        }
+      }
+    });
   } else {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
+    try {
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+    } catch (e) {
+      console.error('localStorage error:', e);
+      if (e.name === 'QuotaExceededError') {
+        showNotification('⚠️ Storage full! Please delete some tasks.', true);
+      }
+    }
   }
   renderTasks();
   // Refresh calendar dots if calendar is active
-  if (document.querySelector('.tab-btn[data-tab="calendar"]').classList.contains('active')) {
+  const calendarTab = document.querySelector('.tab-btn[data-tab="calendar"]');
+  if (calendarTab && calendarTab.classList.contains('active')) {
     renderCalendar();
   }
 }
 
 function renderTasks() {
   list.innerHTML = "";
+
+  // Validate tasks array
+  if (!Array.isArray(tasks)) {
+    console.error('Tasks data is corrupted, resetting to empty array');
+    tasks = [];
+    saveTasks();
+    updateCounter(0);
+    updateEmptyState(0);
+    updateClearButton();
+    return;
+  }
 
   const filteredTasks = tasks.filter((task) => {
     // Apply status filter
@@ -360,9 +389,20 @@ async function correctText(text) {
     if (response && response.success && response.data) {
       return response.data;
     }
+
+    // Handle errors from background script
+    if (response && !response.success && response.error) {
+      if (response.error.includes('OFFLINE')) {
+        showNotification('📡 Offline - Text saved without correction', true);
+      } else if (response.error.includes('API Key')) {
+        showNotification('⚠️ AI not configured - Text saved as-is', true);
+      }
+    }
+
     return text; // Return original if correction fails
   } catch (error) {
     console.error('Correction error:', error);
+    // Don't show notification for every error, just log it
     return text; // Return original on error
   }
 }
@@ -456,11 +496,6 @@ function cyclePriority(index) {
   saveTasks();
 }
 
-function updateCounter() {
-  const active = tasks.filter((t) => !t.completed).length;
-  const total = tasks.length;
-  counter.textContent = `${active}/${total} tasks`;
-}
 
 function updateEmptyState(count) {
   emptyState.classList.toggle("hidden", count > 0);
@@ -523,9 +558,17 @@ async function callPerplexityAI(prompt) {
   aiContent.innerHTML = '<p class="ai-loading">Thinking...</p>';
 
   try {
-    if (!chrome.runtime?.sendMessage) {
-      return 'Extension context not available. Please refresh the page.';
+    // Check if online first
+    if (!navigator.onLine) {
+      aiContent.innerHTML = '<p style="color: #ff6b6b;">📡 You are offline. AI features require an internet connection.</p>';
+      return null;
     }
+
+    if (!chrome.runtime?.sendMessage) {
+      aiContent.innerHTML = '<p style="color: #ff6b6b;">Extension context not available. Please refresh the page.</p>';
+      return null;
+    }
+
     const response = await chrome.runtime.sendMessage({
       action: 'callAI',
       prompt: prompt
@@ -534,11 +577,29 @@ async function callPerplexityAI(prompt) {
     if (response && response.success) {
       return response.data;
     } else {
-      throw new Error(response?.error || 'Unknown error');
+      const errorMsg = response?.error || 'Unknown error';
+
+      // Handle specific error types
+      if (errorMsg.includes('OFFLINE')) {
+        aiContent.innerHTML = '<p style="color: #ff6b6b;">📡 No internet connection. Please check your network and try again.</p>';
+        return null;
+      } else if (errorMsg.includes('API Key')) {
+        aiContent.innerHTML = '<p style="color: #ff6b6b;">⚠️ AI not configured. Please add your API key in background.js</p>';
+        return null;
+      } else {
+        throw new Error(errorMsg);
+      }
     }
   } catch (error) {
     console.error('AI Error:', error);
-    return `Could not connect to AI. Error: ${error.message}`;
+
+    // Check if it's a network error
+    if (!navigator.onLine) {
+      aiContent.innerHTML = '<p style="color: #ff6b6b;">📡 Connection lost. Please check your internet connection.</p>';
+    } else {
+      aiContent.innerHTML = `<p style="color: #ff6b6b;">Could not connect to AI. ${error.message}</p>`;
+    }
+    return null;
   } finally {
     isAiLoading = false;
     aiBtn.classList.remove("loading");
@@ -668,9 +729,23 @@ function loadBookmarks() {
 
 function saveBookmarks() {
   if (storage) {
-    storage.set({ bookmarks });
+    storage.set({ bookmarks }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Storage error:', chrome.runtime.lastError);
+        if (chrome.runtime.lastError.message.includes('QUOTA')) {
+          showNotification('⚠️ Storage full! Please delete some bookmarks.', true);
+        }
+      }
+    });
   } else {
-    localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+    try {
+      localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+    } catch (e) {
+      console.error('localStorage error:', e);
+      if (e.name === 'QuotaExceededError') {
+        showNotification('⚠️ Storage full! Please delete some bookmarks.', true);
+      }
+    }
   }
   renderBookmarks();
 }
@@ -709,6 +784,16 @@ function getFilteredBookmarks() {
 
 function renderBookmarks() {
   bookmarkList.innerHTML = "";
+
+  // Validate bookmarks array
+  if (!Array.isArray(bookmarks)) {
+    console.error('Bookmarks data is corrupted, resetting to empty array');
+    bookmarks = [];
+    saveBookmarks();
+    updateBookmarkCounter(0);
+    updateBookmarkEmptyState(0);
+    return;
+  }
 
   const filteredBookmarks = getFilteredBookmarks();
 
@@ -889,7 +974,25 @@ function addBookmarkManually() {
 
   // Validate URL
   try {
-    new URL(fullUrl);
+    const urlObj = new URL(fullUrl);
+
+    // Additional validation: ensure hostname exists and is not empty
+    if (!urlObj.hostname || urlObj.hostname.length < 3) {
+      showNotification('Please enter a valid URL with a domain', true);
+      return;
+    }
+
+    // Ensure hostname has at least one dot (e.g., example.com)
+    if (!urlObj.hostname.includes('.') && urlObj.hostname !== 'localhost') {
+      showNotification('Please enter a valid domain name', true);
+      return;
+    }
+
+    // Reject URLs that are just protocol + slashes
+    if (urlObj.href === fullUrl && (fullUrl.endsWith('://') || fullUrl.endsWith(':///'))) {
+      showNotification('Please enter a complete URL', true);
+      return;
+    }
   } catch (e) {
     showNotification('Please enter a valid URL', true);
     return;
@@ -1144,7 +1247,7 @@ async function encryptText(text, password) {
     };
   } catch (error) {
     console.error('Encryption error:', error);
-    return null;
+    throw new Error('ENCRYPTION_FAILED: ' + error.message);
   }
 }
 
@@ -1154,7 +1257,7 @@ async function decryptText(encryptedData, password) {
     // Validate encrypted data structure
     if (!encryptedData || !encryptedData.salt || !encryptedData.iv || !encryptedData.encrypted) {
       console.error('Decryption error: Invalid encrypted data structure');
-      return null;
+      throw new Error('DATA_CORRUPTED: Invalid encrypted data structure');
     }
 
     const salt = base642ab(encryptedData.salt);
@@ -1174,10 +1277,13 @@ async function decryptText(encryptedData, password) {
     // Handle DOMException (wrong password) vs other errors
     if (error.name === 'OperationError') {
       console.error('Decryption error: Wrong password or corrupted data');
+      throw new Error('WRONG_PASSWORD: Incorrect password or corrupted data');
+    } else if (error.message && error.message.startsWith('DATA_CORRUPTED')) {
+      throw error; // Re-throw our custom error
     } else {
       console.error('Decryption error:', error.name, error.message);
+      throw new Error('DECRYPTION_FAILED: ' + error.message);
     }
-    return null;
   }
 }
 
@@ -1238,23 +1344,30 @@ async function processUnlock(encryptedData, password) {
     passwordInput.value = '';
   } else {
     // Decrypt existing data
-    const decrypted = await decryptText(encryptedData, password);
+    try {
+      const decrypted = await decryptText(encryptedData, password);
 
-    if (decrypted === null) {
-      showNotification('Incorrect password', true);
+      decryptedSecretNotes = decrypted;
+      isSecretUnlocked = true;
+      currentPassword = password; // Store password for session
+      secretNotesArea.value = decryptedSecretNotes;
+      updateSecretCharCount();
+      showSecretContent();
+      passwordInput.value = '';
+      setupAutoLock();
+    } catch (error) {
+      // Handle specific error types
+      if (error.message.startsWith('WRONG_PASSWORD')) {
+        showNotification('Incorrect password', true);
+      } else if (error.message.startsWith('DATA_CORRUPTED')) {
+        showNotification('Vault data is corrupted', true);
+      } else {
+        showNotification('Failed to decrypt vault', true);
+      }
       unlockBtn.disabled = false;
       unlockBtn.textContent = 'Unlock';
       return;
     }
-
-    decryptedSecretNotes = decrypted;
-    isSecretUnlocked = true;
-    currentPassword = password; // Store password for session
-    secretNotesArea.value = decryptedSecretNotes;
-    updateSecretCharCount();
-    showSecretContent();
-    passwordInput.value = '';
-    setupAutoLock();
   }
 
   unlockBtn.disabled = false;
@@ -1273,10 +1386,15 @@ function lockSecretNotes() {
   // If there is a pending save, save it now before locking
   if (secretNoteSaveTimeout) {
     clearTimeout(secretNoteSaveTimeout);
+    secretNoteSaveTimeout = null;
     saveSecretNotes();
   }
 
-  clearTimeout(autoLockTimeout);
+  // Clear auto-lock timeout to prevent memory leak
+  if (autoLockTimeout) {
+    clearTimeout(autoLockTimeout);
+    autoLockTimeout = null;
+  }
 
   isSecretUnlocked = false;
   decryptedSecretNotes = '';
@@ -1288,15 +1406,25 @@ function lockSecretNotes() {
 }
 
 async function saveSecretNotes(password = null) {
+  // Prevent race conditions with lock flag
+  if (isSavingSecretNotes) {
+    console.log('Save already in progress, skipping');
+    return;
+  }
+
   if (!isSecretUnlocked) {
     console.log('Save aborted: vault is locked');
     return;
   }
 
+  isSavingSecretNotes = true; // Set lock
   const textToSave = secretNotesArea.value;
 
   // Double-check vault is still unlocked before UI update
-  if (!isSecretUnlocked) return;
+  if (!isSecretUnlocked) {
+    isSavingSecretNotes = false;
+    return;
+  }
 
   secretSaveStatus.textContent = 'Encrypting...';
   secretSaveStatus.classList.add('saving');
@@ -1309,36 +1437,49 @@ async function saveSecretNotes(password = null) {
   if (!password) {
     secretSaveStatus.textContent = 'Error: No password';
     secretSaveStatus.classList.remove('saving');
+    isSavingSecretNotes = false; // Release lock
     return;
   }
 
   try {
     const encrypted = await encryptText(textToSave, password);
 
-    if (!encrypted) {
-      showNotification('Failed to encrypt notes', true);
-      secretSaveStatus.textContent = 'Save failed';
-      secretSaveStatus.classList.remove('saving');
+    // Check if still unlocked after async operation
+    if (!isSecretUnlocked) {
+      console.log('Vault locked during encryption, aborting save');
+      isSavingSecretNotes = false;
       return;
     }
 
     if (storage) {
       storage.set({ secretNotes: encrypted }, () => {
-        secretSaveStatus.textContent = 'Encrypted & Saved';
-        secretSaveStatus.classList.remove('saving');
+        if (isSecretUnlocked) { // Only update UI if still unlocked
+          secretSaveStatus.textContent = 'Encrypted & Saved';
+          secretSaveStatus.classList.remove('saving');
+        }
+        isSavingSecretNotes = false; // Release lock
       });
     } else {
       localStorage.setItem('secretNotes', JSON.stringify(encrypted));
-      secretSaveStatus.textContent = 'Encrypted & Saved';
-      secretSaveStatus.classList.remove('saving');
+      if (isSecretUnlocked) { // Only update UI if still unlocked
+        secretSaveStatus.textContent = 'Encrypted & Saved';
+        secretSaveStatus.classList.remove('saving');
+      }
+      isSavingSecretNotes = false; // Release lock
     }
 
     decryptedSecretNotes = textToSave;
     resetAutoLock();
   } catch (error) {
     console.error('Save error:', error);
+    if (error.message.startsWith('ENCRYPTION_FAILED')) {
+      showNotification('Failed to encrypt notes', true);
+    } else {
+      showNotification('Save failed: ' + error.message, true);
+    }
     secretSaveStatus.textContent = 'Save failed';
     secretSaveStatus.classList.remove('saving');
+    isSavingSecretNotes = false; // Release lock
   }
 }
 
@@ -1403,16 +1544,24 @@ cancelPasswordChangeBtn.addEventListener('click', () => {
 });
 
 function setupAutoLock() {
-  clearTimeout(autoLockTimeout);
-  autoLockTimeout = setTimeout(() => {
-    if (isSecretUnlocked) {
-      lockSecretNotes();
-      // Only show notification if user is on the vault tab
-      if (!secretPanel.classList.contains('hidden')) {
-        showNotification('Vault locked for safety', true);
+  // Always clear existing timeout to prevent memory leak
+  if (autoLockTimeout) {
+    clearTimeout(autoLockTimeout);
+    autoLockTimeout = null;
+  }
+
+  // Only set new timeout if vault is unlocked
+  if (isSecretUnlocked) {
+    autoLockTimeout = setTimeout(() => {
+      if (isSecretUnlocked) {
+        lockSecretNotes();
+        // Only show notification if user is on the vault tab
+        if (!secretPanel.classList.contains('hidden')) {
+          showNotification('Vault locked for safety', true);
+        }
       }
-    }
-  }, AUTO_LOCK_TIME);
+    }, AUTO_LOCK_TIME);
+  }
 }
 
 function resetAutoLock() {
@@ -1450,6 +1599,17 @@ secretNotesArea.addEventListener('input', () => {
 
 // Initialize
 loadAllData();
+
+// ===== NETWORK STATUS MONITORING =====
+// Monitor online/offline status
+window.addEventListener('online', () => {
+  showNotification('📡 Back online - AI features available', false);
+});
+
+window.addEventListener('offline', () => {
+  showNotification('📡 You are offline - AI features unavailable', true);
+});
+
 
 // ===== CALENDAR FUNCTIONS =====
 
@@ -1492,8 +1652,18 @@ function renderCalendar() {
 
     // Check if any tasks were created on this exact day
     const hasTasksOnDay = tasks.some(task => {
-      if (!task.createdAt) return false;
+      // Validate task.createdAt exists and is valid
+      if (!task.createdAt || typeof task.createdAt !== 'number') {
+        return false;
+      }
+
       const tDate = new Date(task.createdAt);
+
+      // Check if date is valid
+      if (isNaN(tDate.getTime())) {
+        return false;
+      }
+
       return tDate.getDate() === i &&
         tDate.getMonth() === month &&
         tDate.getFullYear() === year;
@@ -1530,7 +1700,18 @@ function showTasksForDate(date) {
 
   dayTaskList.innerHTML = "";
   const tasksForDay = tasks.filter(task => {
+    // Validate task.createdAt exists and is valid
+    if (!task.createdAt || typeof task.createdAt !== 'number') {
+      return false;
+    }
+
     const taskDate = new Date(task.createdAt);
+
+    // Check if date is valid
+    if (isNaN(taskDate.getTime())) {
+      return false;
+    }
+
     return taskDate.getDate() === date.getDate() &&
       taskDate.getMonth() === date.getMonth() &&
       taskDate.getFullYear() === date.getFullYear();
