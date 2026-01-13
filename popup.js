@@ -152,7 +152,9 @@ function loadAllData() {
       renderBookmarks();
       updateVaultHint(!!result.secretNotes);
 
-      if (document.querySelector('.tab-btn[data-tab="calendar"]').classList.contains('active')) {
+      // Safely check if calendar tab is active
+      const calendarTab = document.querySelector('.tab-btn[data-tab="calendar"]');
+      if (calendarTab && calendarTab.classList.contains('active')) {
         renderCalendar();
       }
     });
@@ -186,19 +188,45 @@ function updateVaultHint(exists) {
 
 function saveTasks() {
   if (storage) {
-    storage.set({ tasks });
+    storage.set({ tasks }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Storage error:', chrome.runtime.lastError);
+        if (chrome.runtime.lastError.message.includes('QUOTA')) {
+          showNotification('⚠️ Storage full! Please delete some tasks.', true);
+        }
+      }
+    });
   } else {
-    localStorage.setItem("tasks", JSON.stringify(tasks));
+    try {
+      localStorage.setItem("tasks", JSON.stringify(tasks));
+    } catch (e) {
+      console.error('localStorage error:', e);
+      if (e.name === 'QuotaExceededError') {
+        showNotification('⚠️ Storage full! Please delete some tasks.', true);
+      }
+    }
   }
   renderTasks();
   // Refresh calendar dots if calendar is active
-  if (document.querySelector('.tab-btn[data-tab="calendar"]').classList.contains('active')) {
+  const calendarTab = document.querySelector('.tab-btn[data-tab="calendar"]');
+  if (calendarTab && calendarTab.classList.contains('active')) {
     renderCalendar();
   }
 }
 
 function renderTasks() {
   list.innerHTML = "";
+
+  // Validate tasks array
+  if (!Array.isArray(tasks)) {
+    console.error('Tasks data is corrupted, resetting to empty array');
+    tasks = [];
+    saveTasks();
+    updateCounter(0);
+    updateEmptyState(0);
+    updateClearButton();
+    return;
+  }
 
   const filteredTasks = tasks.filter((task) => {
     // Apply status filter
@@ -467,11 +495,6 @@ function cyclePriority(index) {
   saveTasks();
 }
 
-function updateCounter() {
-  const active = tasks.filter((t) => !t.completed).length;
-  const total = tasks.length;
-  counter.textContent = `${active}/${total} tasks`;
-}
 
 function updateEmptyState(count) {
   emptyState.classList.toggle("hidden", count > 0);
@@ -705,9 +728,23 @@ function loadBookmarks() {
 
 function saveBookmarks() {
   if (storage) {
-    storage.set({ bookmarks });
+    storage.set({ bookmarks }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Storage error:', chrome.runtime.lastError);
+        if (chrome.runtime.lastError.message.includes('QUOTA')) {
+          showNotification('⚠️ Storage full! Please delete some bookmarks.', true);
+        }
+      }
+    });
   } else {
-    localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+    try {
+      localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+    } catch (e) {
+      console.error('localStorage error:', e);
+      if (e.name === 'QuotaExceededError') {
+        showNotification('⚠️ Storage full! Please delete some bookmarks.', true);
+      }
+    }
   }
   renderBookmarks();
 }
@@ -746,6 +783,16 @@ function getFilteredBookmarks() {
 
 function renderBookmarks() {
   bookmarkList.innerHTML = "";
+
+  // Validate bookmarks array
+  if (!Array.isArray(bookmarks)) {
+    console.error('Bookmarks data is corrupted, resetting to empty array');
+    bookmarks = [];
+    saveBookmarks();
+    updateBookmarkCounter(0);
+    updateBookmarkEmptyState(0);
+    return;
+  }
 
   const filteredBookmarks = getFilteredBookmarks();
 
