@@ -19,72 +19,98 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 async function correctText(text) {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${GITHUB_TOKEN}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a grammar and spelling corrector. Correct any errors in the text and return ONLY the corrected text. Do not add explanations, quotes, or extra punctuation. Keep the same meaning and style. If the text is already correct, return it unchanged.'
-        },
-        {
-          role: 'user',
-          content: text
-        }
-      ],
-      max_tokens: 100,
-      temperature: 0.3
-    })
-  });
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('AI API Key is missing or invalid.');
-    }
-    throw new Error(`API error: ${response.status}`);
+  // Check if online
+  if (!navigator.onLine) {
+    throw new Error('OFFLINE: No internet connection. Text correction unavailable.');
   }
 
-  const data = await response.json();
-  return data.choices ? data.choices[0].message.content.trim() : text;
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a grammar and spelling corrector. Correct any errors in the text and return ONLY the corrected text. Do not add explanations, quotes, or extra punctuation. Keep the same meaning and style. If the text is already correct, return it unchanged.'
+          },
+          {
+            role: 'user',
+            content: text
+          }
+        ],
+        max_tokens: 100,
+        temperature: 0.3
+      })
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('AI API Key is missing or invalid.');
+      }
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices ? data.choices[0].message.content.trim() : text;
+  } catch (error) {
+    // Handle network errors
+    if (error.message.includes('OFFLINE') || error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('OFFLINE: Unable to reach AI service. Check your connection.');
+    }
+    throw error;
+  }
 }
 
 async function callGitHubAI(prompt) {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${GITHUB_TOKEN}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a helpful productivity assistant. Give concise, actionable advice. When suggesting tasks, format each on a new line starting with a dash. Keep responses brief and practical. Do not use emojis.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      max_tokens: 300,
-      temperature: 0.7
-    })
-  });
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error('AI API Key is missing or invalid. Please check your background.js file.');
-    }
-    const errorText = await response.text();
-    throw new Error(`AI error: ${response.status} - ${errorText}`);
+  // Check if online
+  if (!navigator.onLine) {
+    throw new Error('OFFLINE: No internet connection. AI assistant is unavailable.');
   }
 
-  const data = await response.json();
-  return data.choices ? data.choices[0].message.content : 'No response from AI';
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful productivity assistant. Give concise, actionable advice. When suggesting tasks, format each on a new line starting with a dash. Keep responses brief and practical. Do not use emojis.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 300,
+        temperature: 0.7
+      })
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('AI API Key is missing or invalid. Please check your background.js file.');
+      }
+      const errorText = await response.text();
+      throw new Error(`AI error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    return data.choices ? data.choices[0].message.content : 'No response from AI';
+  } catch (error) {
+    // Handle network errors
+    if (error.message.includes('OFFLINE') || error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('OFFLINE: Unable to reach AI service. Check your internet connection.');
+    }
+    throw error;
+  }
 }

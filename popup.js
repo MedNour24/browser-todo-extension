@@ -360,9 +360,20 @@ async function correctText(text) {
     if (response && response.success && response.data) {
       return response.data;
     }
+
+    // Handle errors from background script
+    if (response && !response.success && response.error) {
+      if (response.error.includes('OFFLINE')) {
+        showNotification('📡 Offline - Text saved without correction', true);
+      } else if (response.error.includes('API Key')) {
+        showNotification('⚠️ AI not configured - Text saved as-is', true);
+      }
+    }
+
     return text; // Return original if correction fails
   } catch (error) {
     console.error('Correction error:', error);
+    // Don't show notification for every error, just log it
     return text; // Return original on error
   }
 }
@@ -523,9 +534,17 @@ async function callPerplexityAI(prompt) {
   aiContent.innerHTML = '<p class="ai-loading">Thinking...</p>';
 
   try {
-    if (!chrome.runtime?.sendMessage) {
-      return 'Extension context not available. Please refresh the page.';
+    // Check if online first
+    if (!navigator.onLine) {
+      aiContent.innerHTML = '<p style="color: #ff6b6b;">📡 You are offline. AI features require an internet connection.</p>';
+      return null;
     }
+
+    if (!chrome.runtime?.sendMessage) {
+      aiContent.innerHTML = '<p style="color: #ff6b6b;">Extension context not available. Please refresh the page.</p>';
+      return null;
+    }
+
     const response = await chrome.runtime.sendMessage({
       action: 'callAI',
       prompt: prompt
@@ -534,11 +553,29 @@ async function callPerplexityAI(prompt) {
     if (response && response.success) {
       return response.data;
     } else {
-      throw new Error(response?.error || 'Unknown error');
+      const errorMsg = response?.error || 'Unknown error';
+
+      // Handle specific error types
+      if (errorMsg.includes('OFFLINE')) {
+        aiContent.innerHTML = '<p style="color: #ff6b6b;">📡 No internet connection. Please check your network and try again.</p>';
+        return null;
+      } else if (errorMsg.includes('API Key')) {
+        aiContent.innerHTML = '<p style="color: #ff6b6b;">⚠️ AI not configured. Please add your API key in background.js</p>';
+        return null;
+      } else {
+        throw new Error(errorMsg);
+      }
     }
   } catch (error) {
     console.error('AI Error:', error);
-    return `Could not connect to AI. Error: ${error.message}`;
+
+    // Check if it's a network error
+    if (!navigator.onLine) {
+      aiContent.innerHTML = '<p style="color: #ff6b6b;">📡 Connection lost. Please check your internet connection.</p>';
+    } else {
+      aiContent.innerHTML = `<p style="color: #ff6b6b;">Could not connect to AI. ${error.message}</p>`;
+    }
+    return null;
   } finally {
     isAiLoading = false;
     aiBtn.classList.remove("loading");
@@ -1450,6 +1487,17 @@ secretNotesArea.addEventListener('input', () => {
 
 // Initialize
 loadAllData();
+
+// ===== NETWORK STATUS MONITORING =====
+// Monitor online/offline status
+window.addEventListener('online', () => {
+  showNotification('📡 Back online - AI features available', false);
+});
+
+window.addEventListener('offline', () => {
+  showNotification('📡 You are offline - AI features unavailable', true);
+});
+
 
 // ===== CALENDAR FUNCTIONS =====
 
