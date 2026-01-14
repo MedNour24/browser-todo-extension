@@ -148,7 +148,7 @@ async function correctText(text) {
     }
 
     const data = await response.json();
-    return data.choices ? data.choices[0].message.content.trim() : text;
+    return (data.choices && data.choices[0] && data.choices[0].message) ? data.choices[0].message.content.trim() : text;
   } catch (error) {
     // Handle network errors
     if (error.message.includes('OFFLINE') || error.name === 'TypeError' && error.message.includes('fetch')) {
@@ -197,7 +197,7 @@ async function callGitHubAI(prompt) {
     }
 
     const data = await response.json();
-    return data.choices ? data.choices[0].message.content : 'No response from AI';
+    return (data.choices && data.choices[0] && data.choices[0].message) ? data.choices[0].message.content : 'No response from AI';
   } catch (error) {
     // Handle network errors
     if (error.message.includes('OFFLINE') || error.name === 'TypeError' && error.message.includes('fetch')) {
