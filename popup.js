@@ -155,8 +155,8 @@ let timerInterval = null;
 let currentTimerMode = 'focus'; // 'focus' or 'break'
 let timerDuration = 25 * 60; // default 25 minutes in seconds
 
-// Use chrome.storage for sync across devices, fallback to localStorage
-const storage = typeof chrome !== "undefined" && chrome.storage ? chrome.storage.sync : null;
+// Use chrome.storage.local for reliable data storage (sync has strict 8KB limits)
+const storage = typeof chrome !== "undefined" && chrome.storage ? chrome.storage.local : null;
 
 function loadAllData() {
   if (storage) {
@@ -1169,6 +1169,9 @@ function saveNotes() {
 
   if (storage) {
     storage.set({ notes }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('Notes storage error:', chrome.runtime.lastError);
+      }
       saveStatus.textContent = 'Saved';
       saveStatus.classList.remove('saving');
     });
@@ -1464,14 +1467,14 @@ async function saveSecretNotes(password = null) {
   try {
     const encrypted = await encryptText(textToSave, password);
 
-    // Final check if still unlocked before writing to storage
-    if (!isSecretUnlocked) {
-      isSavingSecretNotes = false;
-      return;
-    }
+    // Save even if locked now, because we already encrypted the data
+    // and this ensures the last changes aren't lost on auto-lock
 
     if (storage) {
       storage.set({ secretNotes: encrypted }, () => {
+        if (chrome.runtime.lastError) {
+          console.error('Vault storage error:', chrome.runtime.lastError);
+        }
         finishSave(textToSave);
       });
     } else {
