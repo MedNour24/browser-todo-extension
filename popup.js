@@ -142,7 +142,8 @@ let decryptedSecretNotes = "";
 let isSecretUnlocked = false;
 let autoLockTimeout = null;
 let currentPassword = null; // Store password for session
-let isSavingSecretNotes = false; // Lock flag to prevent race conditions
+let isSavingSecretNotes = false; // Lock flag for progress
+let isSecretSavePending = false; // Flag to trigger another save after current one finishes
 const AUTO_LOCK_TIME = 5 * 60 * 1000; // 5 minutes
 
 // Calendar State
@@ -1208,7 +1209,13 @@ function ab2str(buffer) {
 
 // Convert ArrayBuffer to base64
 function ab2base64(buffer) {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 // Convert base64 to ArrayBuffer
@@ -1424,25 +1431,20 @@ function lockSecretNotes() {
 }
 
 async function saveSecretNotes(password = null) {
-  // Prevent race conditions with lock flag
+  // If already saving, just mark that we need another save later and stop
   if (isSavingSecretNotes) {
-    console.log('Save already in progress, skipping');
+    isSecretSavePending = true;
     return;
   }
 
   if (!isSecretUnlocked) {
-    console.log('Save aborted: vault is locked');
     return;
   }
 
-  isSavingSecretNotes = true; // Set lock
+  isSavingSecretNotes = true;
+  isSecretSavePending = false;
+
   const textToSave = secretNotesArea.value;
-
-  // Double-check vault is still unlocked before UI update
-  if (!isSecretUnlocked) {
-    isSavingSecretNotes = false;
-    return;
-  }
 
   secretSaveStatus.textContent = 'Encrypting...';
   secretSaveStatus.classList.add('saving');
@@ -1455,49 +1457,53 @@ async function saveSecretNotes(password = null) {
   if (!password) {
     secretSaveStatus.textContent = 'Error: No password';
     secretSaveStatus.classList.remove('saving');
-    isSavingSecretNotes = false; // Release lock
+    isSavingSecretNotes = false;
     return;
   }
 
   try {
     const encrypted = await encryptText(textToSave, password);
 
-    // Check if still unlocked after async operation
+    // Final check if still unlocked before writing to storage
     if (!isSecretUnlocked) {
-      console.log('Vault locked during encryption, aborting save');
       isSavingSecretNotes = false;
       return;
     }
 
     if (storage) {
       storage.set({ secretNotes: encrypted }, () => {
-        if (isSecretUnlocked) { // Only update UI if still unlocked
-          secretSaveStatus.textContent = 'Encrypted & Saved';
-          secretSaveStatus.classList.remove('saving');
-        }
-        isSavingSecretNotes = false; // Release lock
+        finishSave(textToSave);
       });
     } else {
       localStorage.setItem('secretNotes', JSON.stringify(encrypted));
-      if (isSecretUnlocked) { // Only update UI if still unlocked
-        secretSaveStatus.textContent = 'Encrypted & Saved';
-        secretSaveStatus.classList.remove('saving');
-      }
-      isSavingSecretNotes = false; // Release lock
+      finishSave(textToSave);
     }
-
-    decryptedSecretNotes = textToSave;
-    resetAutoLock();
   } catch (error) {
     console.error('Save error:', error);
-    if (error.message.startsWith('ENCRYPTION_FAILED')) {
-      showNotification('Failed to encrypt notes', true);
-    } else {
-      showNotification('Save failed: ' + error.message, true);
-    }
     secretSaveStatus.textContent = 'Save failed';
     secretSaveStatus.classList.remove('saving');
-    isSavingSecretNotes = false; // Release lock
+    isSavingSecretNotes = false;
+
+    // Even on error, check if we need to try again with latest content
+    if (isSecretSavePending && isSecretUnlocked) {
+      saveSecretNotes();
+    }
+  }
+}
+
+function finishSave(savedText) {
+  isSavingSecretNotes = false;
+
+  if (isSecretUnlocked) {
+    secretSaveStatus.textContent = 'Encrypted & Saved';
+    secretSaveStatus.classList.remove('saving');
+    decryptedSecretNotes = savedText;
+    resetAutoLock();
+  }
+
+  // If changes happened during save, trigger another save immediately
+  if (isSecretSavePending && isSecretUnlocked) {
+    saveSecretNotes();
   }
 }
 
@@ -1648,8 +1654,15 @@ function renderCalendar() {
   // Prev month padding
   for (let i = firstDay - 1; i >= 0; i--) {
     const dayDiv = document.createElement("div");
-    dayDiv.className = "calendar-day not-current-month";
-    dayDiv.textContent = daysInPrevMonth - i;
+    dayDiv.className = "calendar-day not-current-month padding-prev";
+    const day = daysInPrevMonth - i;
+    dayDiv.textContent = day;
+    dayDiv.addEventListener("click", () => {
+      calendarDate.setMonth(calendarDate.getMonth() - 1);
+      selectedDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), day);
+      renderCalendar();
+      showTasksForDate(selectedDate);
+    });
     calendarGrid.appendChild(dayDiv);
   }
 
@@ -1705,8 +1718,14 @@ function renderCalendar() {
   const remainingSlots = totalSlots - calendarGrid.children.length;
   for (let i = 1; i <= remainingSlots; i++) {
     const dayDiv = document.createElement("div");
-    dayDiv.className = "calendar-day not-current-month";
+    dayDiv.className = "calendar-day not-current-month padding-next";
     dayDiv.textContent = i;
+    dayDiv.addEventListener("click", () => {
+      calendarDate.setMonth(calendarDate.getMonth() + 1);
+      selectedDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), i);
+      renderCalendar();
+      showTasksForDate(selectedDate);
+    });
     calendarGrid.appendChild(dayDiv);
   }
 }
