@@ -394,9 +394,8 @@ async function correctText(text) {
     if (response && !response.success && response.error) {
       if (response.error.includes('OFFLINE')) {
         showNotification('📡 Offline - Text saved without correction', true);
-      } else if (response.error.includes('API Key')) {
-        showNotification('⚠️ AI not configured - Text saved as-is', true);
       }
+      // API Key error - silently save without notification
     }
 
     return text; // Return original if correction fails
@@ -584,7 +583,7 @@ async function callPerplexityAI(prompt) {
         aiContent.innerHTML = '<p style="color: #ff6b6b;">📡 No internet connection. Please check your network and try again.</p>';
         return null;
       } else if (errorMsg.includes('API Key')) {
-        aiContent.innerHTML = '<p style="color: #ff6b6b;">⚠️ AI not configured. Please add your API key in background.js</p>';
+        // API Key not configured - return null silently
         return null;
       } else {
         throw new Error(errorMsg);
