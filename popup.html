@@ -23,6 +23,7 @@
       <button class="tab-btn" data-tab="calendar">Calendar</button>
       <button class="tab-btn" data-tab="notes">Notes</button>
       <button class="tab-btn" data-tab="bookmarks">Links</button>
+      <button class="tab-btn" data-tab="timer">Timer</button>
       <button class="tab-btn" data-tab="secret">Vault</button>
     </div>
 
@@ -226,6 +227,33 @@
               <span id="secretCharCount">0 characters</span>
               <span id="secretSaveStatus">Encrypted & Saved</span>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <div id="timerPanel" class="panel hidden">
+      <div class="timer-container">
+        <div class="timer-type-selector">
+          <button id="focusMode" class="mode-btn active">Focus</button>
+          <button id="breakMode" class="mode-btn">Break</button>
+        </div>
+        <div class="clock-display">
+          <span id="minutes">25</span>:<span id="seconds">00</span>
+        </div>
+        <div class="timer-controls">
+          <button id="startTimer" class="timer-btn primary">Start</button>
+          <button id="resetTimer" class="timer-btn">Reset</button>
+        </div>
+        <div class="timer-stats">
+          <div class="stat-card">
+            <span class="stat-value" id="todaySessions">0</span>
+            <span class="stat-label">Daily Sessions</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="totalMinutes">0</span>
+            <span class="stat-label">Focus Minutes</span>
           </div>
         </div>
       </div>

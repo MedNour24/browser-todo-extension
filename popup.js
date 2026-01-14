@@ -114,6 +114,17 @@ const secretNotesArea = document.getElementById("secretNotesArea");
 const secretCharCount = document.getElementById("secretCharCount");
 const secretSaveStatus = document.getElementById("secretSaveStatus");
 
+// Timer Elements
+const timerPanel = document.getElementById("timerPanel");
+const minutesDisplay = document.getElementById("minutes");
+const secondsDisplay = document.getElementById("seconds");
+const startTimerBtn = document.getElementById("startTimer");
+const resetTimerBtn = document.getElementById("resetTimer");
+const focusModeBtn = document.getElementById("focusMode");
+const breakModeBtn = document.getElementById("breakMode");
+const todaySessionsDisplay = document.getElementById("todaySessions");
+const totalMinutesDisplay = document.getElementById("totalMinutes");
+
 let tasks = [];
 let notes = "";
 let bookmarks = [];
@@ -137,6 +148,11 @@ const AUTO_LOCK_TIME = 5 * 60 * 1000; // 5 minutes
 // Calendar State
 let calendarDate = new Date();
 let selectedDate = new Date();
+
+// Timer State
+let timerInterval = null;
+let currentTimerMode = 'focus'; // 'focus' or 'break'
+let timerDuration = 25 * 60; // default 25 minutes in seconds
 
 // Use chrome.storage for sync across devices, fallback to localStorage
 const storage = typeof chrome !== "undefined" && chrome.storage ? chrome.storage.sync : null;
@@ -176,6 +192,8 @@ function loadAllData() {
     renderBookmarks();
     updateVaultHint(hasSecret);
   }
+
+  initTimer();
 }
 
 function updateVaultHint(exists) {
@@ -455,6 +473,7 @@ function switchTab(tabName) {
     calendar: calendarPanel,
     notes: notesPanel,
     bookmarks: bookmarksPanel,
+    timer: timerPanel,
     secret: secretPanel
   };
 
@@ -1741,4 +1760,116 @@ prevMonthBtn.addEventListener("click", () => {
 nextMonthBtn.addEventListener("click", () => {
   calendarDate.setMonth(calendarDate.getMonth() + 1);
   renderCalendar();
+});
+
+// ===== TIMER FUNCTIONS =====
+function updateTimerDisplay(totalSeconds) {
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  minutesDisplay.textContent = mins.toString().padStart(2, '0');
+  secondsDisplay.textContent = secs.toString().padStart(2, '0');
+}
+
+async function initTimer() {
+  const result = await chrome.runtime.sendMessage({ action: 'getTimerState' });
+  if (result) {
+    const { state, stats } = result;
+
+    // Update stats
+    todaySessionsDisplay.textContent = stats.todaySessions || 0;
+    totalMinutesDisplay.textContent = stats.totalMinutes || 0;
+
+    if (state.isRunning) {
+      currentTimerMode = state.mode;
+      timerDuration = state.duration;
+      updateModeUI();
+      startLocalCountdown(state.endTime);
+      startTimerBtn.textContent = 'Pause';
+      startTimerBtn.classList.remove('primary');
+    } else {
+      resetTimerUI();
+    }
+  }
+}
+
+function updateModeUI() {
+  focusModeBtn.classList.toggle('active', currentTimerMode === 'focus');
+  breakModeBtn.classList.toggle('active', currentTimerMode === 'break');
+}
+
+function resetTimerUI() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  timerDuration = currentTimerMode === 'focus' ? 25 * 60 : 5 * 60;
+  updateTimerDisplay(timerDuration);
+  startTimerBtn.textContent = 'Start';
+  startTimerBtn.classList.add('primary');
+  updateModeUI();
+}
+
+function startLocalCountdown(endTime) {
+  clearInterval(timerInterval);
+
+  function update() {
+    const now = Date.now();
+    const remaining = Math.max(0, Math.round((endTime - now) / 1000));
+    updateTimerDisplay(remaining);
+
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      initTimer(); // Refresh stats and UI
+    }
+  }
+
+  update();
+  timerInterval = setInterval(update, 1000);
+}
+
+async function toggleTimer() {
+  if (timerInterval) {
+    // Stop/Pause
+    await chrome.runtime.sendMessage({ action: 'stopTimer' });
+    resetTimerUI();
+  } else {
+    // Start
+    const duration = currentTimerMode === 'focus' ? 25 * 60 : 5 * 60;
+    await chrome.runtime.sendMessage({
+      action: 'startTimer',
+      mode: currentTimerMode,
+      duration: duration
+    });
+
+    const endTime = Date.now() + (duration * 1000);
+    startLocalCountdown(endTime);
+    startTimerBtn.textContent = 'Pause';
+    startTimerBtn.classList.remove('primary');
+  }
+}
+
+focusModeBtn.addEventListener('click', () => {
+  if (!timerInterval) {
+    currentTimerMode = 'focus';
+    resetTimerUI();
+  }
+});
+
+breakModeBtn.addEventListener('click', () => {
+  if (!timerInterval) {
+    currentTimerMode = 'break';
+    resetTimerUI();
+  }
+});
+
+startTimerBtn.addEventListener('click', toggleTimer);
+resetTimerBtn.addEventListener('click', async () => {
+  await chrome.runtime.sendMessage({ action: 'stopTimer' });
+  resetTimerUI();
+});
+
+// Listener for background messages
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === 'timerFinished') {
+    initTimer();
+    showNotification(`${message.mode === 'focus' ? 'Focus' : 'Break'} session complete!`, false);
+  }
 });
