@@ -1,5 +1,5 @@
 // Background Service Worker for API calls
-const GITHUB_TOKEN = 'your-api-key-here';
+const GITHUB_TOKEN = 'Api_key_here';
 const API_URL = 'https://models.inference.ai.azure.com/chat/completions';
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -124,19 +124,19 @@ async function correctText(text) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
-            content: 'You are a grammar and spelling corrector. Correct any errors in the text and return ONLY the corrected text. Do not add explanations, quotes, or extra punctuation. Keep the same meaning and style. If the text is already correct, return it unchanged.'
+            content: 'You are a task text optimizer. Your job is to correct spelling, grammar, and typos. Return ONLY the corrected version of the user\'s input. Do not add quotes, explanations, or punctuation unless it was in the original. If the input is already correct, return it exactly as is.'
           },
           {
             role: 'user',
             content: text
           }
         ],
-        max_tokens: 100,
-        temperature: 0.3
+        max_tokens: 150,
+        temperature: 0.1
       })
     });
 
@@ -172,7 +172,7 @@ async function callGitHubAI(prompt) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -183,7 +183,7 @@ async function callGitHubAI(prompt) {
             content: prompt
           }
         ],
-        max_tokens: 300,
+        max_tokens: 500,
         temperature: 0.7
       })
     });

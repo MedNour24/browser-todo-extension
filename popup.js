@@ -380,9 +380,8 @@ async function addTask() {
     input.value = "";
     input.disabled = true;
     addBtn.disabled = true;
-    addBtn.textContent = "...";
-
     // Auto-correct the task text using AI
+    addBtn.textContent = "AI";
     const correctedText = await correctText(text);
 
     tasks.unshift({ text: correctedText, completed: false, createdAt: Date.now(), priority: 'none' });
@@ -398,7 +397,7 @@ async function addTask() {
 async function correctText(text) {
   try {
     if (!chrome.runtime?.sendMessage) {
-      return text; // Return original if runtime not available
+      return text;
     }
     const response = await chrome.runtime.sendMessage({
       action: 'correctText',
@@ -409,19 +408,12 @@ async function correctText(text) {
       return response.data;
     }
 
-    // Handle errors from background script
-    if (response && !response.success && response.error) {
-      if (response.error.includes('OFFLINE')) {
-        showNotification('📡 Offline - Text saved without correction', true);
-      }
-      // API Key error - silently save without notification
-    }
 
-    return text; // Return original if correction fails
+    return text;
   } catch (error) {
-    console.error('Correction error:', error);
-    // Don't show notification for every error, just log it
-    return text; // Return original on error
+    console.error('Correction Error:', error);
+    showNotification('⚠️ AI Service Error', true);
+    return text;
   }
 }
 
