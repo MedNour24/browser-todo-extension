@@ -114,6 +114,17 @@ const secretNotesArea = document.getElementById("secretNotesArea");
 const secretCharCount = document.getElementById("secretCharCount");
 const secretSaveStatus = document.getElementById("secretSaveStatus");
 
+// Timer Elements
+const timerPanel = document.getElementById("timerPanel");
+const minutesDisplay = document.getElementById("minutes");
+const secondsDisplay = document.getElementById("seconds");
+const startTimerBtn = document.getElementById("startTimer");
+const resetTimerBtn = document.getElementById("resetTimer");
+const focusModeBtn = document.getElementById("focusMode");
+const breakModeBtn = document.getElementById("breakMode");
+const todaySessionsDisplay = document.getElementById("todaySessions");
+const totalMinutesDisplay = document.getElementById("totalMinutes");
+
 let tasks = [];
 let notes = "";
 let bookmarks = [];
@@ -131,12 +142,18 @@ let decryptedSecretNotes = "";
 let isSecretUnlocked = false;
 let autoLockTimeout = null;
 let currentPassword = null; // Store password for session
-let isSavingSecretNotes = false; // Lock flag to prevent race conditions
+let isSavingSecretNotes = false; // Lock flag for progress
+let isSecretSavePending = false; // Flag to trigger another save after current one finishes
 const AUTO_LOCK_TIME = 5 * 60 * 1000; // 5 minutes
 
 // Calendar State
 let calendarDate = new Date();
 let selectedDate = new Date();
+
+// Timer State
+let timerInterval = null;
+let currentTimerMode = 'focus'; // 'focus' or 'break'
+let timerDuration = 25 * 60; // default 25 minutes in seconds
 
 // Use chrome.storage for sync across devices, fallback to localStorage
 const storage = typeof chrome !== "undefined" && chrome.storage ? chrome.storage.sync : null;
@@ -176,6 +193,8 @@ function loadAllData() {
     renderBookmarks();
     updateVaultHint(hasSecret);
   }
+
+  initTimer();
 }
 
 function updateVaultHint(exists) {
@@ -394,9 +413,8 @@ async function correctText(text) {
     if (response && !response.success && response.error) {
       if (response.error.includes('OFFLINE')) {
         showNotification('📡 Offline - Text saved without correction', true);
-      } else if (response.error.includes('API Key')) {
-        showNotification('⚠️ AI not configured - Text saved as-is', true);
       }
+      // API Key error - silently save without notification
     }
 
     return text; // Return original if correction fails
@@ -456,6 +474,7 @@ function switchTab(tabName) {
     calendar: calendarPanel,
     notes: notesPanel,
     bookmarks: bookmarksPanel,
+    timer: timerPanel,
     secret: secretPanel
   };
 
@@ -584,7 +603,7 @@ async function callPerplexityAI(prompt) {
         aiContent.innerHTML = '<p style="color: #ff6b6b;">📡 No internet connection. Please check your network and try again.</p>';
         return null;
       } else if (errorMsg.includes('API Key')) {
-        aiContent.innerHTML = '<p style="color: #ff6b6b;">⚠️ AI not configured. Please add your API key in background.js</p>';
+        // API Key not configured - return null silently
         return null;
       } else {
         throw new Error(errorMsg);
@@ -1190,7 +1209,13 @@ function ab2str(buffer) {
 
 // Convert ArrayBuffer to base64
 function ab2base64(buffer) {
-  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 // Convert base64 to ArrayBuffer
@@ -1406,25 +1431,20 @@ function lockSecretNotes() {
 }
 
 async function saveSecretNotes(password = null) {
-  // Prevent race conditions with lock flag
+  // If already saving, just mark that we need another save later and stop
   if (isSavingSecretNotes) {
-    console.log('Save already in progress, skipping');
+    isSecretSavePending = true;
     return;
   }
 
   if (!isSecretUnlocked) {
-    console.log('Save aborted: vault is locked');
     return;
   }
 
-  isSavingSecretNotes = true; // Set lock
+  isSavingSecretNotes = true;
+  isSecretSavePending = false;
+
   const textToSave = secretNotesArea.value;
-
-  // Double-check vault is still unlocked before UI update
-  if (!isSecretUnlocked) {
-    isSavingSecretNotes = false;
-    return;
-  }
 
   secretSaveStatus.textContent = 'Encrypting...';
   secretSaveStatus.classList.add('saving');
@@ -1437,49 +1457,53 @@ async function saveSecretNotes(password = null) {
   if (!password) {
     secretSaveStatus.textContent = 'Error: No password';
     secretSaveStatus.classList.remove('saving');
-    isSavingSecretNotes = false; // Release lock
+    isSavingSecretNotes = false;
     return;
   }
 
   try {
     const encrypted = await encryptText(textToSave, password);
 
-    // Check if still unlocked after async operation
+    // Final check if still unlocked before writing to storage
     if (!isSecretUnlocked) {
-      console.log('Vault locked during encryption, aborting save');
       isSavingSecretNotes = false;
       return;
     }
 
     if (storage) {
       storage.set({ secretNotes: encrypted }, () => {
-        if (isSecretUnlocked) { // Only update UI if still unlocked
-          secretSaveStatus.textContent = 'Encrypted & Saved';
-          secretSaveStatus.classList.remove('saving');
-        }
-        isSavingSecretNotes = false; // Release lock
+        finishSave(textToSave);
       });
     } else {
       localStorage.setItem('secretNotes', JSON.stringify(encrypted));
-      if (isSecretUnlocked) { // Only update UI if still unlocked
-        secretSaveStatus.textContent = 'Encrypted & Saved';
-        secretSaveStatus.classList.remove('saving');
-      }
-      isSavingSecretNotes = false; // Release lock
+      finishSave(textToSave);
     }
-
-    decryptedSecretNotes = textToSave;
-    resetAutoLock();
   } catch (error) {
     console.error('Save error:', error);
-    if (error.message.startsWith('ENCRYPTION_FAILED')) {
-      showNotification('Failed to encrypt notes', true);
-    } else {
-      showNotification('Save failed: ' + error.message, true);
-    }
     secretSaveStatus.textContent = 'Save failed';
     secretSaveStatus.classList.remove('saving');
-    isSavingSecretNotes = false; // Release lock
+    isSavingSecretNotes = false;
+
+    // Even on error, check if we need to try again with latest content
+    if (isSecretSavePending && isSecretUnlocked) {
+      saveSecretNotes();
+    }
+  }
+}
+
+function finishSave(savedText) {
+  isSavingSecretNotes = false;
+
+  if (isSecretUnlocked) {
+    secretSaveStatus.textContent = 'Encrypted & Saved';
+    secretSaveStatus.classList.remove('saving');
+    decryptedSecretNotes = savedText;
+    resetAutoLock();
+  }
+
+  // If changes happened during save, trigger another save immediately
+  if (isSecretSavePending && isSecretUnlocked) {
+    saveSecretNotes();
   }
 }
 
@@ -1630,8 +1654,15 @@ function renderCalendar() {
   // Prev month padding
   for (let i = firstDay - 1; i >= 0; i--) {
     const dayDiv = document.createElement("div");
-    dayDiv.className = "calendar-day not-current-month";
-    dayDiv.textContent = daysInPrevMonth - i;
+    dayDiv.className = "calendar-day not-current-month padding-prev";
+    const day = daysInPrevMonth - i;
+    dayDiv.textContent = day;
+    dayDiv.addEventListener("click", () => {
+      calendarDate.setMonth(calendarDate.getMonth() - 1);
+      selectedDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), day);
+      renderCalendar();
+      showTasksForDate(selectedDate);
+    });
     calendarGrid.appendChild(dayDiv);
   }
 
@@ -1687,8 +1718,14 @@ function renderCalendar() {
   const remainingSlots = totalSlots - calendarGrid.children.length;
   for (let i = 1; i <= remainingSlots; i++) {
     const dayDiv = document.createElement("div");
-    dayDiv.className = "calendar-day not-current-month";
+    dayDiv.className = "calendar-day not-current-month padding-next";
     dayDiv.textContent = i;
+    dayDiv.addEventListener("click", () => {
+      calendarDate.setMonth(calendarDate.getMonth() + 1);
+      selectedDate = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), i);
+      renderCalendar();
+      showTasksForDate(selectedDate);
+    });
     calendarGrid.appendChild(dayDiv);
   }
 }
@@ -1742,4 +1779,116 @@ prevMonthBtn.addEventListener("click", () => {
 nextMonthBtn.addEventListener("click", () => {
   calendarDate.setMonth(calendarDate.getMonth() + 1);
   renderCalendar();
+});
+
+// ===== TIMER FUNCTIONS =====
+function updateTimerDisplay(totalSeconds) {
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = totalSeconds % 60;
+  minutesDisplay.textContent = mins.toString().padStart(2, '0');
+  secondsDisplay.textContent = secs.toString().padStart(2, '0');
+}
+
+async function initTimer() {
+  const result = await chrome.runtime.sendMessage({ action: 'getTimerState' });
+  if (result) {
+    const { state, stats } = result;
+
+    // Update stats
+    todaySessionsDisplay.textContent = stats.todaySessions || 0;
+    totalMinutesDisplay.textContent = stats.totalMinutes || 0;
+
+    if (state.isRunning) {
+      currentTimerMode = state.mode;
+      timerDuration = state.duration;
+      updateModeUI();
+      startLocalCountdown(state.endTime);
+      startTimerBtn.textContent = 'Pause';
+      startTimerBtn.classList.remove('primary');
+    } else {
+      resetTimerUI();
+    }
+  }
+}
+
+function updateModeUI() {
+  focusModeBtn.classList.toggle('active', currentTimerMode === 'focus');
+  breakModeBtn.classList.toggle('active', currentTimerMode === 'break');
+}
+
+function resetTimerUI() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  timerDuration = currentTimerMode === 'focus' ? 25 * 60 : 5 * 60;
+  updateTimerDisplay(timerDuration);
+  startTimerBtn.textContent = 'Start';
+  startTimerBtn.classList.add('primary');
+  updateModeUI();
+}
+
+function startLocalCountdown(endTime) {
+  clearInterval(timerInterval);
+
+  function update() {
+    const now = Date.now();
+    const remaining = Math.max(0, Math.round((endTime - now) / 1000));
+    updateTimerDisplay(remaining);
+
+    if (remaining <= 0) {
+      clearInterval(timerInterval);
+      initTimer(); // Refresh stats and UI
+    }
+  }
+
+  update();
+  timerInterval = setInterval(update, 1000);
+}
+
+async function toggleTimer() {
+  if (timerInterval) {
+    // Stop/Pause
+    await chrome.runtime.sendMessage({ action: 'stopTimer' });
+    resetTimerUI();
+  } else {
+    // Start
+    const duration = currentTimerMode === 'focus' ? 25 * 60 : 5 * 60;
+    await chrome.runtime.sendMessage({
+      action: 'startTimer',
+      mode: currentTimerMode,
+      duration: duration
+    });
+
+    const endTime = Date.now() + (duration * 1000);
+    startLocalCountdown(endTime);
+    startTimerBtn.textContent = 'Pause';
+    startTimerBtn.classList.remove('primary');
+  }
+}
+
+focusModeBtn.addEventListener('click', () => {
+  if (!timerInterval) {
+    currentTimerMode = 'focus';
+    resetTimerUI();
+  }
+});
+
+breakModeBtn.addEventListener('click', () => {
+  if (!timerInterval) {
+    currentTimerMode = 'break';
+    resetTimerUI();
+  }
+});
+
+startTimerBtn.addEventListener('click', toggleTimer);
+resetTimerBtn.addEventListener('click', async () => {
+  await chrome.runtime.sendMessage({ action: 'stopTimer' });
+  resetTimerUI();
+});
+
+// Listener for background messages
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.action === 'timerFinished') {
+    initTimer();
+    showNotification(`${message.mode === 'focus' ? 'Focus' : 'Break'} session complete!`, false);
+  }
 });

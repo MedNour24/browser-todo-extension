@@ -1978,3 +1978,112 @@ li.completed .task-text {
   background: #444;
   color: var(--light);
 }
+
+/* Pomodoro Timer */
+.timer-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 25px;
+  padding: 10px 0;
+}
+
+.timer-type-selector {
+  display: flex;
+  gap: 10px;
+  background: var(--dark);
+  padding: 5px;
+  border-radius: 12px;
+  border: 1px solid var(--gray);
+}
+
+.mode-btn {
+  padding: 8px 20px;
+  border: none;
+  background: transparent;
+  color: #666;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.mode-btn.active {
+  background: var(--primary);
+  color: var(--light);
+}
+
+.clock-display {
+  font-size: 72px;
+  font-weight: 800;
+  color: var(--light);
+  font-family: 'Courier New', Courier, monospace;
+  text-shadow: 0 0 20px rgba(227, 49, 29, 0.3);
+  letter-spacing: -2px;
+}
+
+.timer-controls {
+  display: flex;
+  gap: 15px;
+  width: 100%;
+}
+
+.timer-btn {
+  flex: 1;
+  padding: 15px;
+  border: none;
+  border-radius: 12px;
+  background: var(--gray);
+  color: var(--light);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.timer-btn.primary {
+  background: var(--primary);
+}
+
+.timer-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+}
+
+.timer-btn:active {
+  transform: translateY(0);
+}
+
+.timer-stats {
+  display: flex;
+  gap: 15px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.stat-card {
+  flex: 1;
+  background: var(--dark);
+  border: 1px solid var(--gray);
+  padding: 15px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.stat-label {
+  font-size: 10px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+}

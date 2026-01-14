@@ -10,7 +10,9 @@
   },
   "permissions": [
     "storage",
-    "tabs"
+    "tabs",
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
     "https://models.inference.ai.azure.com/*"
